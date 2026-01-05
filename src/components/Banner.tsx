@@ -27,7 +27,7 @@ const Banner = () => {
             height: 'clamp(3rem, 4vw, 4rem)'
           }}
         >
-          clothes
+          shop
         </Link>
 
         <Link 
