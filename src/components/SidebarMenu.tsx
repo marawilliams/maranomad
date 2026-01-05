@@ -38,7 +38,7 @@ const SidebarMenu = ({
     }
   }, [isSidebarOpen]);
 
-  const linkClassName = "py-2 border-secondaryBrown w-full block flex justify-center tracking-[3px] text-[#09140d] hover:text-[#9e9f96] transition-colors";
+  const linkClassName = "font-eskool py-2 border-secondaryBrown w-full block flex justify-center tracking-[3px] text-[#09140d] hover:text-[#9e9f96] transition-colors";
 
   if (!shouldRender) return null;
 
@@ -67,13 +67,13 @@ const SidebarMenu = ({
         <div className="flex justify-center mt-2">
           <Link
             to="/"
-            className="text-2xl font-light max-sm:text-2xl max-[400px]:text-xl tracking-[3px] hover:text-[#9e9f96] transition-colors"
+            className="font-eskool text-2xl font-light max-sm:text-2xl max-[400px]:text-xl tracking-[3px] hover:text-[#9e9f96] transition-colors"
             onClick={() => setIsSidebarOpen(false)}
           >
             maranomad
           </Link>
         </div>
-        <div className="flex flex-col items-center gap-1 mt-7">
+        <div className="font-eskoolflex flex-col items-center gap-1 mt-7">
           <Link to="/" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
             home
           </Link>

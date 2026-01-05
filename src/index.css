@@ -8,15 +8,24 @@ body {
 }
 
 .banner {
-  height: 500px;
+  height: 675px;
   background: linear-gradient(
       0deg,
       rgba(0, 0, 0, 0.25) 0%,
       rgba(0, 0, 0, 0.15) 100%
     ),
-    url("/assets/bannerforest.jpg") lightgray 50% / cover no-repeat;
-  background-position: center bottom;
+    url("/assets/bannerforest.jpg") lightgray;
+    background-size:2560px auto;
+    background-repeat:no-repeat;
+    background-position: center 70%;
 }
+
+@media (max-width: 867px) {
+  .banner {
+    background-position: center 80%;
+  }
+}
+
 
 .shop-banner {
   background: linear-gradient(
@@ -55,7 +64,7 @@ body {
 
 @font-face {
   font-family: 'nightly';
-  src: url('/fonts/Nightlydemo.otf') format('opentype');
+  src: url('/fonts/Nightydemo.otf') format('opentype');
   font-weight: 400;
   font-style:normal;
 }

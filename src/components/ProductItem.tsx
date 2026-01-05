@@ -3,13 +3,13 @@ import { Link } from "react-router-dom";
 const ProductItem = ({
   id,
   image,
+  imageback,
   title,
   price,
-  popularity: _popularity,
-  stock: _stock,
 }: {
   id: string;
   image: string;
+  imageback: string;
   title: string;
   category: string;
   price: number;
@@ -17,23 +17,38 @@ const ProductItem = ({
   stock: number;
 }) => {
   return (
-    <div className="w-[400px] flex flex-col gap-2 justify-center max-md:w-[300px]">
+    <div className="w-[400px] flex flex-col justify-center max-md:w-[300px]">
       <Link
         to={`/product/${id}`}
-        className="w-full aspect-square overflow-hidden hover:scale-105 transition-transform duration-500"
+        className="group relative w-full aspect-square rounded-xl overflow-hidden transition-transform duration-500 hover:scale-105"
       >
-        <img src={`/assets/${image}`} alt={title} />
+        {/* Front image */}
+        <img
+          src={`/assets/${image}`}
+          alt={title}
+          className="absolute inset-0 h-full w-full object-contain transition-opacity duration-500 group-hover:opacity-0"
+        />
+
+        {/* Back image */}
+        <img
+          src={`/assets/${imageback}`}
+          alt={`${title} back`}
+          className="absolute inset-0 h-full w-full object-contain opacity-0 transition-opacity duration-500 group-hover:opacity-100"
+        />
       </Link>
+
       <Link
         to={`/product/${id}`}
-        className="text-[#3a3d1c] text-center font-light text-xl tracking-[2px] max-md:text-xl lowercase"
+        className="font-eskool font-normal text-[#3a3d1c] text-center text-lg tracking-[2px] max-md:text-md lowercase"
       >
         <h2>{title}</h2>
       </Link>
-      <p className="text-black text-2xl text-center max-md:text-xl">
+
+      <p className="font-eskool text-[#9e9f96] text-md text-center max-md:text-md">
         ${price}
       </p>
     </div>
   );
 };
+
 export default ProductItem;

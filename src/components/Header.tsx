@@ -10,11 +10,11 @@ const Header = () => {
   const [ isSidebarOpen, setIsSidebarOpen ] = useState(false);
   return (
     <>
-    <header className="max-w-screen-2xl flex text-center justify-between items-center py-4 px-5 text-black mx-auto max-sm:px-5 max-[400px]:px-3 bg-[#d7d7d7]">
+    <header className="max-w-screen-2xl flex text-center justify-between items-center py-4 px-5 text-black mx-auto max-sm:px-5 max-[400px]:px-3 bg-[#d3d3d3]">
       <HiBars3 className="text-2xl max-sm:text-xl mr-20 max-lg:mr-0 cursor-pointer  hover:text-[#9e9f96] transition-colors" onClick={() => setIsSidebarOpen(true)} />
       <Link
         to="/"
-        className="font-nightly text-3xl tracking-[10px] max-sm:text-2xl max-[400px]:text-xl text-[#09140d] hover:text-[#9e9f96] transition-colors"
+        className="font-eskool text-3xl tracking-[6px] max-sm:text-3xl max-[400px]:text-2xl text-[#09140d] hover:text-[#9e9f96] transition-colors"
       >
         maranomad
       </Link>

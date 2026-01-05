@@ -2,6 +2,7 @@ interface Product {
   id: string;
   title: string;
   image: string;
+  imageback: string;
   category: string;
   price: number;
   popularity: number;

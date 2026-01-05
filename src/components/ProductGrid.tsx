@@ -13,6 +13,7 @@ className="max-w-screen-2xl flex flex-wrap justify-center items-center gap-5 mx-
             key={nanoid()}
             id={product.id}
             image={product.image}
+            imageback={product.imageback}
             title={product.title}
             category={product.category}
             price={product.price}

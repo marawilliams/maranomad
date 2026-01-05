@@ -2,75 +2,90 @@
   "products": [
     {
       "id": "1",
-      "title": "Luxury Dress",
-      "image": "product image 1.jpg",
-      "category": "special-edition",
-      "price": 3500,
+      "title": "beetle tee",
+      "image": "beetletee.png",
+      "imageback": "beetleteeback.png",
+      "category": "none",
+      "price": 50,
       "popularity": 5,
       "stock": 10
     },
     {
       "id": "2",
-      "title": "Luxury Black Clothing",
-      "image": "product image 2.jpg",
-      "category": "luxury-collection",
-      "price": 1050,
-      "popularity": 4,
-      "stock": 20
+      "title": "beetle tee",
+      "image": "beetletee.png",
+            "imageback": "beetleteeback.png",
+
+      "category": "none",
+      "price": 50,
+      "popularity": 5,
+      "stock": 10
     },
     {
       "id": "3",
-      "title": "Luxury Blue Dress",
-      "image": "product image 3.jpg",
-      "category": "summer-edition",
-      "price": 5000,
-      "popularity": 3,
-      "stock": 5
+      "title": "beetle tee",
+      "image": "beetletee.png",
+            "imageback": "beetleteeback.png",
+
+      "category": "none",
+      "price": 50,
+      "popularity": 5,
+      "stock": 10
     },
     {
       "id": "4",
-      "title": "Special Brown Dress",
-      "image": "product image 4.jpg",
-      "category": "unique-collection",
-      "price": 2500,
-      "popularity": 2,
-      "stock": 15
+      "title": "beetle tee",
+      "image": "beetletee.png",
+            "imageback": "beetleteeback.png",
+
+      "category": "none",
+      "price": 50,
+      "popularity": 5,
+      "stock": 10
     },
     {
       "id": "5",
-      "title": "Special Luxury Dress",
-      "image": "product image 5.jpg",
-      "category": "unique-collection",
-      "price": 5200,
-      "popularity": 1,
-      "stock": 0
+      "title": "beetle tee",
+      "image": "beetletee.png",
+            "imageback": "beetleteeback.png",
+
+      "category": "none",
+      "price": 50,
+      "popularity": 5,
+      "stock": 10
     },
     {
       "id": "6",
-      "title": "Super Luxury Dress",
-      "image": "product image 6.jpg",
-      "category": "luxury-collection",
-      "price": 8500,
-      "popularity": 20,
-      "stock": 20
+      "title": "beetle tee",
+      "image": "beetletee.png",
+            "imageback": "beetleteeback.png",
+
+      "category": "none",
+      "price": 50,
+      "popularity": 5,
+      "stock": 10
     },
     {
       "id": "7",
-      "title": "Luxury Brown Dress",
-      "image": "product image 7.jpg",
-      "category": "luxury-collection",
-      "price": 4500,
+      "title": "beetle tee",
+      "image": "beetletee.png",
+            "imageback": "beetleteeback.png",
+
+      "category": "none",
+      "price": 50,
       "popularity": 5,
-      "stock": 500
+      "stock": 10
     },
     {
       "id": "8",
-      "title": "Premium Brown Dress",
-      "image": "product image 8.jpg",
-      "category": "unique-collection",
-      "price": 4500,
+      "title": "beetle tee",
+      "image": "beetletee.png",
+            "imageback": "beetleteeback.png",
+
+      "category": "none",
+      "price": 50,
       "popularity": 5,
-      "stock": 500
+      "stock": 10
     },
     {
       "id": "9",
