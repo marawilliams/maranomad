@@ -19,6 +19,7 @@ import { shopCategoryLoader } from "./pages/Shop";
 import { loader as orderHistoryLoader } from "./pages/OrderHistory";
 import { loader as singleOrderLoader } from "./pages/SingleOrderHistory";
 import About, { aboutLoader } from "./pages/about";
+import Contact from "./pages/contact";
 
 const router = createBrowserRouter([
   {
@@ -87,6 +88,11 @@ const router = createBrowserRouter([
         element: <About />,
         loader: aboutLoader,
     },
+    {
+    path: "/contact",
+    element: <Contact />,
+  },
+
     ],
   },
 ]);

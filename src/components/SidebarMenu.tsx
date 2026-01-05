@@ -90,6 +90,9 @@ const SidebarMenu = ({
           <Link to="/about" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
             about
           </Link>
+          <Link to="/contact" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+            contact
+          </Link>
           <Link to="/search" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
             search
           </Link>
