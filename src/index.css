@@ -13,7 +13,7 @@ body {
       rgba(0, 0, 0, 0.25) 0%,
       rgba(0, 0, 0, 0.15) 100%
     ),
-    url("/assets/banner1.jpg") lightgray 50% / cover no-repeat;
+    url("/assets/bannerforest.jpg") lightgray 50% / cover no-repeat;
   background-position: 10% 25%;
 }
 
@@ -23,7 +23,7 @@ body {
       rgba(0, 0, 0, 0.25) 0%,
       rgba(0, 0, 0, 0.25) 100%
     ),
-    url("/assets/shopbanner1.png") lightgray 3.589px 1.817px / 100% 197.462%
+    url("/assets/banner1.png") lightgray 3.589px 1.817px / 100% 197.462%
       no-repeat;
 }
 
