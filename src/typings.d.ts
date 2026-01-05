@@ -12,21 +12,16 @@ interface Product {
   createdAt?: string;
   updatedAt?: string;
 }
-
-interface ProductInCart {
-  id: string;
-  title: string;
-  category: string;
-  price: number;
+interface ProductInCart extends Product {
+  id: string;        // unique cart id (can combine product id + size + color)
   quantity: number;
   size: string;
   color: string;
   stock: number;
-  images: string[];       // keep full array
-  image: string;          // first image
-  imageback: string;      // second image or fallback
-  status: "for-sale" | "not-for-sale" | "sold";
+  _id?: string;      // optional, optional because MongoDB provides it
+  status?: "for-sale" | "not-for-sale" | "sold"; // optional, taken from Product
 }
+
 
 
 

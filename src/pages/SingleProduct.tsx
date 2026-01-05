@@ -1,25 +1,25 @@
-import {
-  Button,
-  Dropdown,
-  ProductItem,
-  QuantityInput,
-  StandardSelectInput,
-} from "../components";
-import { useParams } from "react-router-dom";
 import React, { useEffect, useState } from "react";
-import { addProductToTheCart } from "../features/cart/cartSlice";
+import { useParams } from "react-router-dom";
 import { useAppDispatch } from "../hooks";
+import { addProductToTheCart } from "../features/cart/cartSlice";
+import toast from "react-hot-toast";
 import WithSelectInputWrapper from "../utils/withSelectInputWrapper";
 import WithNumberInputWrapper from "../utils/withNumberInputWrapper";
+import { Button, Dropdown, QuantityInput, StandardSelectInput } from "../components";
 import { formatCategoryName } from "../utils/formatCategoryName";
-import toast from "react-hot-toast";
+import InnerImageZoom from "react-inner-image-zoom";
+import "react-inner-image-zoom/dist/InnerImageZoom/styles.min.css";
 
 const SingleProduct = () => {
-  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [singleProduct, setSingleProduct] = useState<Product | null>(null);
+  const [mainImageIndex, setMainImageIndex] = useState(0);
+
   const [size, setSize] = useState<string>("xs");
   const [color, setColor] = useState<string>("black");
   const [quantity, setQuantity] = useState<number>(1);
+
   const params = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
 
@@ -27,26 +27,25 @@ const SingleProduct = () => {
   const QuantityInputUpgrade = WithNumberInputWrapper(QuantityInput);
 
   useEffect(() => {
-    const fetchSingleProduct = async () => {
-      const response = await fetch(
-        `http://localhost:5000/api/products/${params.id}` // use backend API port
-      );
-      const data = await response.json();
-      setSingleProduct(data);
+    const fetchProduct = async () => {
+      setLoading(true);
+      try {
+        const response = await fetch(`http://localhost:5000/api/products/${params.id}`);
+        if (!response.ok) throw new Error("Product not found");
+        const data = await response.json();
+        setSingleProduct(data);
+      } catch (err: any) {
+        setError(err.message || "Failed to fetch product");
+      } finally {
+        setLoading(false);
+      }
     };
-
-    const fetchProducts = async () => {
-      const response = await fetch("http://localhost:5000/api/products");
-      const data = await response.json();
-      setProducts(data);
-    };
-
-    fetchSingleProduct();
-    fetchProducts();
+    fetchProduct();
   }, [params.id]);
 
-const handleAddToCart = () => {
-  if (singleProduct) {
+  const handleAddToCart = () => {
+    if (!singleProduct || singleProduct.status !== "for-sale") return;
+
     dispatch(
       addProductToTheCart({
         id: singleProduct._id + size + color,
@@ -58,140 +57,96 @@ const handleAddToCart = () => {
         color,
         stock: singleProduct.stock,
         images: singleProduct.images,
-        image: singleProduct.images[0],
-        imageback: singleProduct.images[1] || singleProduct.images[0],
-        status: singleProduct.status,
       })
     );
     toast.success("Product added to the cart");
-  }
-};
+  };
 
+  if (loading) return <p className="text-center mt-12">Loading product...</p>;
+  if (error || !singleProduct) return <p className="text-center mt-12">{error || "Product not found"}</p>;
 
-
-  if (!singleProduct) return <p>Loading...</p>;
-
-  // Determine price display
-  const priceDisplay =
-    singleProduct.status === "for-sale"
-      ? `$${singleProduct.price}`
-      : singleProduct.status === "sold"
-      ? "sold"
-      : "not for sale";
+  const isForSale = singleProduct.status === "for-sale";
 
   return (
     <div className="max-w-screen-2xl mx-auto px-5 max-[400px]:px-3">
       <div className="grid grid-cols-3 gap-x-8 max-lg:grid-cols-1">
-        <div className="lg:col-span-2">
-          <img
-            src={singleProduct.images[0]}
-            alt={singleProduct.title}
-            className="w-full object-contain"
+        {/* Main Image with zoom */}
+        <div className="lg:col-span-2 flex flex-col gap-3">
+          <InnerImageZoom
+            src={singleProduct.images[mainImageIndex]}
+            zoomSrc={singleProduct.images[mainImageIndex]}
+            zoomType="hover"
+            zoomScale={1.5}
+            imgAttributes={{ alt: singleProduct.title }}
+            className="w-full max-h-[600px] object-contain rounded-lg"
           />
-        </div>
-        <div className="w-full flex flex-col gap-5 mt-9">
-          <div className="flex flex-col gap-2">
-            <h1 className="text-4xl">{singleProduct.title}</h1>
-            <div className="flex justify-between items-center">
-              <p className="text-base text-secondaryBrown">
-                {formatCategoryName(singleProduct.category)}
-              </p>
-              <p className="text-base font-bold">{priceDisplay}</p>
-            </div>
-          </div>
 
-          <div className="flex flex-col gap-2">
-            <SelectInputUpgrade
-              selectList={[
-                { id: "xs", value: "XS" },
-                { id: "sm", value: "SM" },
-                { id: "m", value: "M" },
-                { id: "lg", value: "LG" },
-                { id: "xl", value: "XL" },
-                { id: "2xl", value: "2XL" },
-              ]}
-              value={size}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setSize(e.target.value)
-              }
-            />
-            <SelectInputUpgrade
-              selectList={[
-                { id: "black", value: "BLACK" },
-                { id: "red", value: "RED" },
-                { id: "blue", value: "BLUE" },
-                { id: "white", value: "WHITE" },
-                { id: "rose", value: "ROSE" },
-                { id: "green", value: "GREEN" },
-              ]}
-              value={color}
-              onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setColor(e.target.value)
-              }
-            />
-
-            <QuantityInputUpgrade
-              value={quantity}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setQuantity(parseInt(e.target.value))
-              }
-            />
-          </div>
-
-          <div className="flex flex-col gap-3">
-            <Button
-              mode="brown"
-              text="Add to cart"
-              onClick={handleAddToCart}
-              disabled={singleProduct.status !== "for-sale"} // disable if not for sale
-            />
-            <p className="text-secondaryBrown text-sm text-right">
-              Delivery estimated on the Friday, July 26
-            </p>
-          </div>
-
-          <div>
-            <Dropdown dropdownTitle="Description">
-              {singleProduct.description || "No description provided."}
-            </Dropdown>
-
-            <Dropdown dropdownTitle="Product Details">
-              Lorem ipsum dolor sit amet, consectetur adipisicing elit. Fuga ad
-              at odio illo, necessitatibus, reprehenderit dolore voluptas ea
-              consequuntur ducimus repellat soluta mollitia facere sapiente.
-            </Dropdown>
-
-            <Dropdown dropdownTitle="Delivery Details">
-              Lorem ipsum dolor sit amet, consectetur adipisicing elit. Fuga ad
-              at odio illo, necessitatibus, reprehenderit dolore voluptas ea
-              consequuntur ducimus repellat soluta mollitia facere sapiente.
-            </Dropdown>
-          </div>
-        </div>
-      </div>
-
-      {/* similar products */}
-      <div>
-        <h2 className="text-black/90 text-5xl mt-24 mb-12 text-center max-lg:text-4xl">
-          Similar Products
-        </h2>
-        <div className="flex flex-wrap justify-between items-center gap-y-8 mt-12 max-xl:justify-start max-xl:gap-5">
-          {products
-            .filter((p) => p._id !== singleProduct._id)
-            .slice(0, 3)
-            .map((product: Product) => (
-              <ProductItem
-                key={product._id}
-                id={product._id}
-                image={product.images[0]}
-                imageback={product.images[1] || product.images[0]}
-                title={product.title}
-                category={product.category}
-                price={product.price}
-                stock={product.stock}
-                status={product.status}
-              />
+          {/* Thumbnails / buttons */}
+          <div className="flex gap-2 mt-3">
+            {singleProduct.images.map((img, index) => (
+              <button
+                key={index}
+                onClick={() => setMainImageIndex(index)}
+                className={`border rounded p-1 ${index === mainImageIndex ? "border-black" : "border-gray-300"}`}
+              >
+                <img src={img} alt={`thumbnail ${index}`} className="w-16 h-16 object-contain" />
+              </button>
             ))}
+          </div>
+        </div>
+
+        {/* Details */}
+        <div className="w-full flex flex-col gap-5 mt-9">
+          <h1 className="text-4xl">{singleProduct.title}</h1>
+          <p className="text-base text-secondaryBrown">{formatCategoryName(singleProduct.category)}</p>
+          <p className="text-base font-bold">{isForSale ? `$${singleProduct.price}` : "Not for sale"}</p>
+
+          {/* Options */}
+          <SelectInputUpgrade
+            selectList={[
+              { id: "xs", value: "XS" },
+              { id: "sm", value: "SM" },
+              { id: "m", value: "M" },
+              { id: "lg", value: "LG" },
+              { id: "xl", value: "XL" },
+              { id: "2xl", value: "2XL" },
+            ]}
+            value={size}
+            onChange={(e) => setSize(e.target.value)}
+          />
+          <SelectInputUpgrade
+            selectList={[
+              { id: "black", value: "BLACK" },
+              { id: "red", value: "RED" },
+              { id: "blue", value: "BLUE" },
+              { id: "white", value: "WHITE" },
+              { id: "rose", value: "ROSE" },
+              { id: "green", value: "GREEN" },
+            ]}
+            value={color}
+            onChange={(e) => setColor(e.target.value)}
+          />
+
+          <QuantityInputUpgrade
+            value={quantity}
+            onChange={(e) => setQuantity(parseInt(e.target.value))}
+          />
+
+          <Button
+            mode="brown"
+            text={isForSale ? "Add to cart" : "Not for sale"}
+            onClick={handleAddToCart}
+            disabled={!isForSale}
+          />
+
+          <p className="text-secondaryBrown text-sm text-right">
+            Delivery estimated on the Friday, July 26
+          </p>
+
+          {/* Dropdowns */}
+          <Dropdown dropdownTitle="Description">{singleProduct.description}</Dropdown>
+          <Dropdown dropdownTitle="Product Details">Product details here</Dropdown>
+          <Dropdown dropdownTitle="Delivery Details">Delivery info here</Dropdown>
         </div>
       </div>
     </div>
