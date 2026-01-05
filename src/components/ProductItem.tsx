@@ -5,9 +5,7 @@ const ProductItem = ({
   image,
   imageback,
   title,
-  category,
   price,
-  stock,
   status, // new
 }: {
   id: string;
@@ -51,16 +49,18 @@ const ProductItem = ({
         )}
 
         {/* Optional overlay for not-for-sale */}
-        {status === "not-for-sale" && (
+        {/*{status === "not-for-sale" && (
           <div className="absolute inset-0 bg-black/20 flex items-center justify-center text-[#d7d7d7]  text-xl">
             not for sale
           </div>
-        )}
+        )}*/}
+
+        
       </Link>
 
       <Link
         to={`/product/${id}`}
-        className="font-eskool font-normal text-[#3a3d1c] text-center text-lg tracking-[2px] max-md:text-md lowercase"
+        className="font-nightly font-normal text-[#3a3d1c] text-center text-4xl tracking-[2px] max-md:text-md lowercase"
       >
         <h2>{title}</h2>
       </Link>

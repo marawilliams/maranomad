@@ -17,6 +17,8 @@ const ProductGridWrapper = ({
   sortCriteria,
   category,
   page,
+  status,
+  filters,
   limit,
   children,
 }: {
@@ -24,6 +26,8 @@ const ProductGridWrapper = ({
   sortCriteria?: string;
   category?: string;
   page?: number;
+  status?: string;
+  filters?: { sizes: string[]; types: string[] };
   limit?: number;
   children:
     | ReactElement<{ products: Product[] }>
@@ -34,7 +38,7 @@ const ProductGridWrapper = ({
   const dispatch = useAppDispatch();
 
   const getSearchedProducts = useCallback(
-    async (query: string, sort: string, page: number) => {
+    async (query: string, sort: string, page: number, statusFilter?: string, productFilters?: { sizes: string[]; types: string[] }) => {
       const response = await customFetch("/products");
       let searchedProducts: Product[] = response.data;
 
@@ -52,16 +56,43 @@ const ProductGridWrapper = ({
         );
       }
 
+      // 🏷️ Status filter
+      if (statusFilter) {
+        searchedProducts = searchedProducts.filter(
+          (product) => product.status === statusFilter
+        );
+      }
+
+// 📏 Size filter (case-insensitive)
+if (productFilters?.sizes && productFilters.sizes.length > 0) {
+  searchedProducts = searchedProducts.filter((product) =>
+    productFilters.sizes.some(size => 
+      size.toLowerCase() === product.size?.toLowerCase()
+    )
+  );
+}
+
+// 👕 Type filter (case-insensitive)
+if (productFilters?.types && productFilters.types.length > 0) {
+  searchedProducts = searchedProducts.filter((product) =>
+    productFilters.types.some(type => 
+      type.toLowerCase() === product.category?.toLowerCase()
+    )
+  );
+}
+
       // 📊 Total count
       if (totalProducts !== searchedProducts.length) {
         dispatch(setTotalProducts(searchedProducts.length));
       }
 
-      // ⭐ STATUS PRIORITY SORT (ALWAYS FIRST)
-      searchedProducts.sort(
-        (a, b) =>
-          STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-      );
+      // ⭐ STATUS PRIORITY SORT (only if no status filter)
+      if (!statusFilter) {
+        searchedProducts.sort(
+          (a, b) =>
+            STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+        );
+      }
 
       // 💲 Price sorting (optional, AFTER status)
       if (sort === "price-asc") {
@@ -88,8 +119,8 @@ const ProductGridWrapper = ({
   );
 
   useEffect(() => {
-    getSearchedProducts(searchQuery || "", sortCriteria || "", page || 1);
-  }, [searchQuery, sortCriteria, page, getSearchedProducts]);
+    getSearchedProducts(searchQuery || "", sortCriteria || "", page || 1, status, filters);
+  }, [searchQuery, sortCriteria, page, status, filters, getSearchedProducts]);
 
   const childrenWithProps = React.Children.map(children, (child) => {
     if (React.isValidElement(child)) {

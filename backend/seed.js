@@ -8,7 +8,9 @@ const products = [
   "title": "Beetle Tee",
   "description": "Heavyweight cotton tee with custom beetle graphic",
   "price": 29.99,
-  "category": "t-shirts",
+  "category": "t-shirt",
+  "size": "xxl",
+  "brand": "pro club",
   "images": [
     "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767630347/Subject_kuuulf.png",
     "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767630347/Subject_1_pwd7xm.png"
@@ -20,7 +22,9 @@ const products = [
   "title": "Led Zeppelin Jacket",
   "description": "Denim Jacket with black fabric sewed onto back of garment",
   "price": 29.99,
-  "category": "jackets",
+  "category": "jacket",
+  "size": "xl",
+  "brand": "gap",
   "images": [
     "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767631204/Subject_3_kxhgzr.png",
     "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767631203/Subject_4_iee2qm.png"

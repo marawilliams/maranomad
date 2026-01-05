@@ -13,6 +13,8 @@ const productSchema = new mongoose.Schema({
       message: "At least one image is required"
     }
   },
+  size: { type: String, required: true }, // e.g., "M", "L", "XS"
+  brand: {type: String},
   stock: { type: Number, default: 0 },
   status: {
     type: String,

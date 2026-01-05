@@ -8,7 +8,8 @@ interface Product {
 
   images: string[];            // unlimited images
   status: "for-sale" | "sold" | "not-for-sale";
-
+  size: string;
+  brand: string;
   createdAt?: string;
   updatedAt?: string;
 }
