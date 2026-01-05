@@ -4,33 +4,30 @@ require("dotenv").config();
 const Product = require("./models/Product");
 
 const products = [
-  {
-    title: "Beetle Tee",
-    image: "beetletee.png",
-    imageback: "beleteteeback.png",
-    category: "none",
-    price: 29.99,
-    popularity: 50,
-    stock: 100,
-  },
-  {
-    title: "Classic Hoodie",
-    image: "classic-hoodie.png",
-    imageback: "classic-hoodie-back.png",
-    category: "hoodies",
-    price: 59.99,
-    popularity: 75,
-    stock: 50,
-  },
-  {
-    title: "Sneaker X",
-    image: "sneakerx.png",
-    imageback: "sneakerx-back.png",
-    category: "shoes",
-    price: 89.99,
-    popularity: 90,
-    stock: 30,
-  },
+{
+  "title": "Beetle Tee",
+  "description": "Heavyweight cotton tee with custom beetle graphic",
+  "price": 29.99,
+  "category": "t-shirts",
+  "images": [
+    "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767630347/Subject_kuuulf.png",
+    "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767630347/Subject_1_pwd7xm.png"
+  ],
+  "stock": 1,
+  "status": "not-for-sale"
+},
+{
+  "title": "Led Zeppelin Jacket",
+  "description": "Denim Jacket with black fabric sewed onto back of garment",
+  "price": 29.99,
+  "category": "jackets",
+  "images": [
+    "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767631204/Subject_3_kxhgzr.png",
+    "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767631203/Subject_4_iee2qm.png"
+  ],
+  "stock": 1,
+  "status": "not-for-sale"
+}
 ];
 
 async function seedDB() {

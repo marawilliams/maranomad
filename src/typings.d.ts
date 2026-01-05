@@ -1,21 +1,34 @@
 interface Product {
-  id: string;
+  _id: string;                 // MongoDB ID
   title: string;
-  image: string;
-  imageback: string;
+  description?: string;
   category: string;
   price: number;
-  popularity: number;
   stock: number;
+
+  images: string[];            // unlimited images
+  status: "for-sale" | "sold" | "not-for-sale";
+
+  createdAt?: string;
+  updatedAt?: string;
 }
 
-interface ProductInCart extends Product {
+interface ProductInCart {
   id: string;
+  title: string;
+  category: string;
+  price: number;
   quantity: number;
   size: string;
   color: string;
   stock: number;
+  images: string[];       // keep full array
+  image: string;          // first image
+  imageback: string;      // second image or fallback
+  status: "for-sale" | "not-for-sale" | "sold";
 }
+
+
 
 interface User {
   id: string;

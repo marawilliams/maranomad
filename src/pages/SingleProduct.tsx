@@ -17,75 +17,89 @@ import toast from "react-hot-toast";
 const SingleProduct = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [singleProduct, setSingleProduct] = useState<Product | null>(null);
-  // defining default values for input fields
   const [size, setSize] = useState<string>("xs");
   const [color, setColor] = useState<string>("black");
   const [quantity, setQuantity] = useState<number>(1);
   const params = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
 
-  // defining HOC instances
   const SelectInputUpgrade = WithSelectInputWrapper(StandardSelectInput);
   const QuantityInputUpgrade = WithNumberInputWrapper(QuantityInput);
 
   useEffect(() => {
     const fetchSingleProduct = async () => {
       const response = await fetch(
-        `http://localhost:3000/products/${params.id}`
+        `http://localhost:5000/api/products/${params.id}` // use backend API port
       );
       const data = await response.json();
       setSingleProduct(data);
     };
 
     const fetchProducts = async () => {
-      const response = await fetch("http://localhost:3000/products");
+      const response = await fetch("http://localhost:5000/api/products");
       const data = await response.json();
       setProducts(data);
     };
+
     fetchSingleProduct();
     fetchProducts();
   }, [params.id]);
 
-  const handleAddToCart = () => {
-    if (singleProduct) {
-      dispatch(
-        addProductToTheCart({
-          id: singleProduct.id + size + color,
-          image: singleProduct.image,
-          imageback: singleProduct.imageback,
-          title: singleProduct.title,
-          category: singleProduct.category,
-          price: singleProduct.price,
-          quantity,
-          size,
-          color,
-          popularity: singleProduct.popularity,
-          stock: singleProduct.stock,
-        })
-      );
-      toast.success("Product added to the cart");
-    }
-  };
+const handleAddToCart = () => {
+  if (singleProduct) {
+    dispatch(
+      addProductToTheCart({
+        id: singleProduct._id + size + color,
+        title: singleProduct.title,
+        category: singleProduct.category,
+        price: singleProduct.price,
+        quantity,
+        size,
+        color,
+        stock: singleProduct.stock,
+        images: singleProduct.images,
+        image: singleProduct.images[0],
+        imageback: singleProduct.images[1] || singleProduct.images[0],
+        status: singleProduct.status,
+      })
+    );
+    toast.success("Product added to the cart");
+  }
+};
+
+
+
+  if (!singleProduct) return <p>Loading...</p>;
+
+  // Determine price display
+  const priceDisplay =
+    singleProduct.status === "for-sale"
+      ? `$${singleProduct.price}`
+      : singleProduct.status === "sold"
+      ? "sold"
+      : "not for sale";
 
   return (
     <div className="max-w-screen-2xl mx-auto px-5 max-[400px]:px-3">
       <div className="grid grid-cols-3 gap-x-8 max-lg:grid-cols-1">
         <div className="lg:col-span-2">
           <img
-            src={`/assets/${singleProduct?.image}`}
-            alt={singleProduct?.title}
+            src={singleProduct.images[0]}
+            alt={singleProduct.title}
+            className="w-full object-contain"
           />
         </div>
         <div className="w-full flex flex-col gap-5 mt-9">
           <div className="flex flex-col gap-2">
-            <h1 className="text-4xl">{singleProduct?.title}</h1>
+            <h1 className="text-4xl">{singleProduct.title}</h1>
             <div className="flex justify-between items-center">
               <p className="text-base text-secondaryBrown">
-                {formatCategoryName(singleProduct?.category || "")}
+                {formatCategoryName(singleProduct.category)}
               </p>
-              <p className="text-base font-bold">${ singleProduct?.price }</p>
+              <p className="text-base font-bold">{priceDisplay}</p>
             </div>
           </div>
+
           <div className="flex flex-col gap-2">
             <SelectInputUpgrade
               selectList={[
@@ -98,7 +112,7 @@ const SingleProduct = () => {
               ]}
               value={size}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setSize(() => e.target.value)
+                setSize(e.target.value)
               }
             />
             <SelectInputUpgrade
@@ -112,44 +126,45 @@ const SingleProduct = () => {
               ]}
               value={color}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-                setColor(() => e.target.value)
+                setColor(e.target.value)
               }
             />
 
             <QuantityInputUpgrade
               value={quantity}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setQuantity(() => parseInt(e.target.value))
+                setQuantity(parseInt(e.target.value))
               }
             />
           </div>
+
           <div className="flex flex-col gap-3">
-            <Button mode="brown" text="Add to cart" onClick={handleAddToCart} />
+            <Button
+              mode="brown"
+              text="Add to cart"
+              onClick={handleAddToCart}
+              disabled={singleProduct.status !== "for-sale"} // disable if not for sale
+            />
             <p className="text-secondaryBrown text-sm text-right">
               Delivery estimated on the Friday, July 26
             </p>
           </div>
+
           <div>
-            {/* drowdown items */}
             <Dropdown dropdownTitle="Description">
-              Lorem ipsum dolor, sit amet consectetur adipisicing elit. Labore
-              quos deleniti, mollitia, vitae harum suscipit voluptatem quasi, ab
-              assumenda accusantium rem praesentium accusamus quae quam tempore
-              nostrum corporis eaque. Mollitia.
+              {singleProduct.description || "No description provided."}
             </Dropdown>
 
             <Dropdown dropdownTitle="Product Details">
               Lorem ipsum dolor sit amet, consectetur adipisicing elit. Fuga ad
               at odio illo, necessitatibus, reprehenderit dolore voluptas ea
               consequuntur ducimus repellat soluta mollitia facere sapiente.
-              Unde provident possimus hic dolore.
             </Dropdown>
 
             <Dropdown dropdownTitle="Delivery Details">
               Lorem ipsum dolor sit amet, consectetur adipisicing elit. Fuga ad
               at odio illo, necessitatibus, reprehenderit dolore voluptas ea
               consequuntur ducimus repellat soluta mollitia facere sapiente.
-              Unde provident possimus hic dolore.
             </Dropdown>
           </div>
         </div>
@@ -160,23 +175,27 @@ const SingleProduct = () => {
         <h2 className="text-black/90 text-5xl mt-24 mb-12 text-center max-lg:text-4xl">
           Similar Products
         </h2>
-        <div className="flex flex-wrap justify-between items-center gap-y-8 mt-12 max-xl:justify-start max-xl:gap-5 ">
-          {products.slice(0, 3).map((product: Product) => (
-            <ProductItem
-              key={product?.id}
-              id={product?.id}
-              image={product?.image}
-              imageback={product?.imageback}
-              title={product?.title}
-              category={product?.category}
-              price={product?.price}
-              popularity={product?.popularity}
-              stock={product?.stock}
-            />
-          ))}
+        <div className="flex flex-wrap justify-between items-center gap-y-8 mt-12 max-xl:justify-start max-xl:gap-5">
+          {products
+            .filter((p) => p._id !== singleProduct._id)
+            .slice(0, 3)
+            .map((product: Product) => (
+              <ProductItem
+                key={product._id}
+                id={product._id}
+                image={product.images[0]}
+                imageback={product.images[1] || product.images[0]}
+                title={product.title}
+                category={product.category}
+                price={product.price}
+                stock={product.stock}
+                status={product.status}
+              />
+            ))}
         </div>
       </div>
     </div>
   );
 };
+
 export default SingleProduct;

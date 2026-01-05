@@ -6,6 +6,12 @@ import {
   setTotalProducts,
 } from "../features/shop/shopSlice";
 
+const STATUS_ORDER: Record<string, number> = {
+  "for-sale": 1,
+  "sold": 2,
+  "not-for-sale": 3,
+};
+
 const ProductGridWrapper = ({
   searchQuery,
   sortCriteria,
@@ -27,85 +33,72 @@ const ProductGridWrapper = ({
   const { totalProducts } = useAppSelector((state) => state.shop);
   const dispatch = useAppDispatch();
 
-  // Memoize the function to prevent unnecessary re-renders
-  // getSearchedProducts will be called only when searchQuery or sortCriteria changes
   const getSearchedProducts = useCallback(
     async (query: string, sort: string, page: number) => {
-      if (!query || query.length === 0) {
-        query = "";
-      }
       const response = await customFetch("/products");
-      const allProducts = await response.data;
-      let searchedProducts = allProducts.filter((product: Product) =>
-        product.title.toLowerCase().includes(query.toLowerCase())
-      );
+      let searchedProducts: Product[] = response.data;
 
-      if (category) {
-        searchedProducts = searchedProducts.filter((product: Product) => {
-          return product.category === category;
-        });
+      // 🔍 Search
+      if (query) {
+        searchedProducts = searchedProducts.filter((product) =>
+          product.title.toLowerCase().includes(query.toLowerCase())
+        );
       }
 
+      // 🗂 Category filter
+      if (category) {
+        searchedProducts = searchedProducts.filter(
+          (product) => product.category === category
+        );
+      }
+
+      // 📊 Total count
       if (totalProducts !== searchedProducts.length) {
         dispatch(setTotalProducts(searchedProducts.length));
       }
 
-      // Sort the products based on the sortCriteria
+      // ⭐ STATUS PRIORITY SORT (ALWAYS FIRST)
+      searchedProducts.sort(
+        (a, b) =>
+          STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+      );
+
+      // 💲 Price sorting (optional, AFTER status)
       if (sort === "price-asc") {
-        searchedProducts = searchedProducts.sort(
-          (a: Product, b: Product) => a.price - b.price
-        );
-      } else if (sort === "price-desc") {
-        searchedProducts = searchedProducts.sort(
-          (a: Product, b: Product) => b.price - a.price
-        );
-      } else if (sort === "popularity") {
-        searchedProducts = searchedProducts.sort(
-          (a: Product, b: Product) => b.popularity - a.popularity
-        );
+        searchedProducts.sort((a, b) => a.price - b.price);
       }
-      // Limit the number of products to be displayed
+
+      if (sort === "price-desc") {
+        searchedProducts.sort((a, b) => b.price - a.price);
+      }
+
+      // 📄 Pagination / limits
+      let visibleProducts = searchedProducts;
+
       if (limit) {
-        setProducts(searchedProducts.slice(0, limit));
-        // Set the number of products being displayed
-        // This will be displayed in the ShowingPagination component
-        dispatch(setShowingProducts(searchedProducts.slice(0, limit).length));
-        // If page is provided, slice the products based on the page number
-        // this will be used for pagination
+        visibleProducts = searchedProducts.slice(0, limit);
       } else if (page) {
-        setProducts(searchedProducts.slice(0, page * 9));
-        // Set the number of products being displayed
-        // This will be displayed in the ShowingPagination component
-        dispatch(
-          setShowingProducts(searchedProducts.slice(0, page * 9).length)
-        );
-        // If no limit or page is provided, display all the products
-      } else {
-        setProducts(searchedProducts);
-        // Set the number of products being displayed
-        dispatch(setShowingProducts(searchedProducts.length));
+        visibleProducts = searchedProducts.slice(0, page * 9);
       }
+
+      setProducts(visibleProducts);
+      dispatch(setShowingProducts(visibleProducts.length));
     },
-    []
+    [category, dispatch, totalProducts]
   );
 
   useEffect(() => {
     getSearchedProducts(searchQuery || "", sortCriteria || "", page || 1);
-  }, [searchQuery, sortCriteria, page]);
+  }, [searchQuery, sortCriteria, page, getSearchedProducts]);
 
-  // Clone the children and pass the products as props to the children
-  // This will cause the children to re-render with the new products
-  // Also it will cause many re-renders if the children are not memoized
-  // So I memoized the ProductGrid component
   const childrenWithProps = React.Children.map(children, (child) => {
-    // Checking isValidElement is the safe way and avoids a
-    // typescript error too.
-    if (React.isValidElement(child) && products.length > 0) {
-      return React.cloneElement(child, { products: products });
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child, { products });
     }
     return null;
   });
 
   return childrenWithProps;
 };
+
 export default ProductGridWrapper;
