@@ -4,17 +4,18 @@
 
 body {
   font-family: "Merriweather", serif;
+  background-color: #d7d7d7;
 }
 
 .banner {
-  height: 800px;
+  height: 500px;
   background: linear-gradient(
       0deg,
       rgba(0, 0, 0, 0.25) 0%,
       rgba(0, 0, 0, 0.15) 100%
     ),
     url("/assets/bannerforest.jpg") lightgray 50% / cover no-repeat;
-  background-position: 10% 25%;
+  background-position: center bottom;
 }
 
 .shop-banner {
@@ -50,4 +51,17 @@ body {
 
 .singleOrder-table th{
   text-align: left;
+}
+
+@font-face {
+  font-family: 'nightly';
+  src: url('/fonts/Nightlydemo.otf') format('opentype');
+  font-weight: 400;
+  font-style:normal;
+}
+@font-face {
+  font-family: 'eskool';
+  src: url('/fonts/Eskool-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style:normal;
 }

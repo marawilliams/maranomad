@@ -13,7 +13,8 @@ const SidebarMenu = ({
   isSidebarOpen: boolean;
   setIsSidebarOpen: (prev: boolean) => void;
 }) => {
-  const [isAnimating, setIsAnimating] = useState(false);
+  const [shouldRender, setShouldRender] = useState(false);
+  const [isVisible, setIsVisible] = useState(false);
   const { loginStatus } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
 
@@ -26,90 +27,83 @@ const SidebarMenu = ({
 
   useEffect(() => {
     if (isSidebarOpen) {
-      setIsAnimating(true);
+      setShouldRender(true);
+      // Small delay to ensure component is mounted before animation
+      setTimeout(() => setIsVisible(true), 10);
     } else {
-      const timer = setTimeout(() => setIsAnimating(false), 300); // Match the transition duration
+      setIsVisible(false);
+      // Wait for animation to finish before unmounting
+      const timer = setTimeout(() => setShouldRender(false), 500);
       return () => clearTimeout(timer);
     }
   }, [isSidebarOpen]);
 
+  const linkClassName = "py-2 border-secondaryBrown w-full block flex justify-center tracking-[3px] text-[#09140d] hover:text-[#9e9f96] transition-colors";
+
+  if (!shouldRender) return null;
+
   return (
     <>
-      {(isSidebarOpen || isAnimating) && (
-        <div
-          className={
-            isSidebarOpen
-              ? "fixed top-0 left-0 w-64 z-50 h-full transition-transform duration-300 ease-in-out bg-white shadow-lg transform border-r border-black translate-x-0"
-              : "fixed top-0 left-0 w-64 z-50 h-full transition-transform duration-300 ease-in-out bg-white shadow-lg transform border-r border-black -translate-x-full"
-          }
-        >
-          <div className="flex justify-end mr-1 mt-1">
-            <HiXMark
-              className="text-3xl cursor-pointer"
-              onClick={() => setIsSidebarOpen(false)}
-            />
-          </div>
-          <div className="flex justify-center mt-2">
-            <Link
-              to="/"
-              className="text-4xl font-light tracking-[1.08px] max-sm:text-3xl max-[400px]:text-2xl"
-            >
-              FASHION
-            </Link>
-          </div>
-          <div className="flex flex-col items-center gap-1 mt-7">
-            <Link
-              to="/"
-              className="py-2 border-y border-secondaryBrown w-full block flex justify-center"
-            >
-              Home
-            </Link>
-            <Link
-              to="/shop"
-              className="py-2 border-y border-secondaryBrown w-full block flex justify-center"
-            >
-              Shop
-            </Link>
-            <Link
-              to="/search"
-              className="py-2 border-y border-secondaryBrown w-full block flex justify-center"
-            >
-              Search
-            </Link>
-            {loginStatus ? (
-              <>
-                <button
-                  onClick={logout}
-                  className="py-2 border-y border-secondaryBrown w-full block flex justify-center"
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="py-2 border-y border-secondaryBrown w-full block flex justify-center"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/register"
-                  className="py-2 border-y border-secondaryBrown w-full block flex justify-center"
-                >
-                  Sign up
-                </Link>
-              </>
-            )}
-            <Link
-              to="/cart"
-              className="py-2 border-y border-secondaryBrown w-full block flex justify-center"
-            >
-              Cart
-            </Link>
-          </div>
+      {/* Backdrop overlay */}
+      <div
+        className={`fixed inset-0 bg-black z-40 transition-opacity duration-500 ${
+          isVisible ? "opacity-50" : "opacity-0"
+        }`}
+        onClick={() => setIsSidebarOpen(false)}
+      />
+
+      {/* Sidebar */}
+      <div
+        className={`fixed top-0 left-0 w-64 z-50 h-full bg-[#e8e8e8] shadow-lg border-r border-black transition-transform duration-300 ease-in-out ${
+          isVisible ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        <div className="flex justify-end mr-1 mt-1">
+          <HiXMark
+            className="text-3xl cursor-pointer hover:text-[#9e9f96] transition-colors"
+            onClick={() => setIsSidebarOpen(false)}
+          />
         </div>
-      )}
+        <div className="flex justify-center mt-2">
+          <Link
+            to="/"
+            className="text-2xl font-light max-sm:text-2xl max-[400px]:text-xl tracking-[3px] hover:text-[#9e9f96] transition-colors"
+            onClick={() => setIsSidebarOpen(false)}
+          >
+            maranomad
+          </Link>
+        </div>
+        <div className="flex flex-col items-center gap-1 mt-7">
+          <Link to="/" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+            home
+          </Link>
+          <Link to="/shop" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+            shop
+          </Link>
+          <Link to="/search" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+            search
+          </Link>
+          {loginStatus ? (
+            <>
+              <button onClick={logout} className={linkClassName}>
+                logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link to="/login" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+                sign in
+              </Link>
+              <Link to="/register" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+                sign up
+              </Link>
+            </>
+          )}
+          <Link to="/cart" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+            cart
+          </Link>
+        </div>
+      </div>
     </>
   );
 };

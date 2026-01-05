@@ -6,6 +6,10 @@ export default {
       colors: {
         secondaryBrown: "#8A8475",
       },
+      fontFamily: {
+        'nightly': ['nightly', 'sans-serif'],
+        'eskool':['eskool', 'sans-serif']
+      },
     },
   },
   plugins: ["@tailwindcss/forms"],
