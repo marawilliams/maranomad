@@ -52,6 +52,7 @@ const SingleProduct = () => {
         addProductToTheCart({
           id: singleProduct.id + size + color,
           image: singleProduct.image,
+          imageback: singleProduct.imageback,
           title: singleProduct.title,
           category: singleProduct.category,
           price: singleProduct.price,
@@ -165,6 +166,7 @@ const SingleProduct = () => {
               key={product?.id}
               id={product?.id}
               image={product?.image}
+              imageback={product?.imageback}
               title={product?.title}
               category={product?.category}
               price={product?.price}
