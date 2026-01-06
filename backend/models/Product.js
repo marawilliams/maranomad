@@ -9,8 +9,10 @@ const productSchema = new mongoose.Schema({
   images: {
     type: [String], // array of image URLs
     validate: {
-      validator: v => v.length >= 1,
-      message: "At least one image is required"
+      validator: function(v) {
+        return v && v.length >= 1 && v.every(url => url && url.trim().length > 0);
+      },
+      message: "At least one valid image URL is required"
     }
   },
   size: { type: String, required: true }, // e.g., "M", "L", "XS"

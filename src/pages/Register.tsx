@@ -32,6 +32,20 @@ const Register = () => {
       // Register with Firebase
       await createUserWithEmailAndPassword(auth, data.email, data.password);
 
+      // Create Stripe customer and Firestore user mapping via backend
+      try {
+        const uid = auth.currentUser?.uid;
+        if (uid) {
+          await fetch(`${import.meta.env.VITE_API_URL || ''}/api/create-customer`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: data.email, name: `${data.name} ${data.lastname}`, uid }),
+          });
+        }
+      } catch (e) {
+        console.warn('Could not create Stripe customer:', e);
+      }
+
       toast.success("User registered successfully!");
       navigate("/login");
     } catch (error: any) {

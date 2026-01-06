@@ -13,6 +13,7 @@ import {
   SingleOrderHistory,
   SingleProduct,
   UserProfile,
+  Admin,
 } from "./pages";
 import { checkoutAction, searchAction } from "./actions/index";
 import { shopCategoryLoader } from "./pages/Shop";
@@ -82,16 +83,19 @@ const router = createBrowserRouter([
         path: "order-history/:id",
         element: <SingleOrderHistory />,
       },
-        {
-      path: "/about",
+      {
+        path: "/about",
         element: <About />,
         loader: aboutLoader,
-    },
-    {
-    path: "/contact",
-    element: <Contact />,
-  },
-
+      },
+      {
+        path: "/contact",
+        element: <Contact />,
+      },
+      {
+        path: "/admin",
+        element: <Admin />,
+      },
     ],
   },
 ]);

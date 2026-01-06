@@ -6,6 +6,9 @@ import customFetch from "../axios/custom";
 import { checkUserProfileFormData } from "../utils/checkUserProfileFormData";
 import { setLoginStatus } from "../features/auth/authSlice";
 import { store } from "../store";
+import { auth, db } from "../firebase/config";
+import { updateProfile, updateEmail, sendEmailVerification, sendPasswordResetEmail, deleteUser } from "firebase/auth";
+import { doc, updateDoc, deleteDoc } from "firebase/firestore";
 
 const UserProfile = () => {
   const navigate = useNavigate();

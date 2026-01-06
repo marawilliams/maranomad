@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users can only read/write their own user document
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    // Orders: Users can read/write their own orders
+    match /orders/{orderId} {
+      allow read, write: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    // Carts: Users can read/write their own cart
+    match /carts/{cartId} {
+      allow read, write: if request.auth != null && request.auth.uid == cartId;
+    }
+    // Products: Read-only for all authenticated users (admin can write if needed)
+    match /products/{productId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && request.auth.token.admin == true; // Assuming custom claims for admin
+    }
+  }
+}

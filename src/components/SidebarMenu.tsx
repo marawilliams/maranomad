@@ -5,6 +5,8 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAppSelector } from "../hooks";
 import { setLoginStatus } from "../features/auth/authSlice";
 import { store } from "../store";
+import { onAuthStateChanged } from "firebase/auth";
+import { auth } from "../firebase/config";
 
 const SidebarMenu = ({
   isSidebarOpen,
@@ -15,6 +17,7 @@ const SidebarMenu = ({
 }) => {
   const [shouldRender, setShouldRender] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const { loginStatus } = useAppSelector((state) => state.auth);
   const navigate = useNavigate();
 
@@ -37,6 +40,29 @@ const SidebarMenu = ({
       return () => clearTimeout(timer);
     }
   }, [isSidebarOpen]);
+
+  // Check admin status
+  useEffect(() => {
+    if (loginStatus) {
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          try {
+            const idTokenResult = await user.getIdTokenResult();
+            const admin = idTokenResult.claims.admin === true;
+            setIsAdmin(admin);
+          } catch (error) {
+            console.error('Error checking admin status:', error);
+            setIsAdmin(false);
+          }
+        } else {
+          setIsAdmin(false);
+        }
+      });
+      return unsubscribe;
+    } else {
+      setIsAdmin(false);
+    }
+  }, [loginStatus]);
 
   const linkClassName = "font-eskool py-2 border-secondaryBrown w-full block flex justify-center tracking-[3px] text-[#09140d] hover:text-[#9e9f96] transition-colors";
 
@@ -98,9 +124,9 @@ const SidebarMenu = ({
           </Link>
           {loginStatus ? (
             <>
-              <button onClick={logout} className={linkClassName}>
-                logout
-              </button>
+              <Link to="/login" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
+                account
+              </Link>
             </>
           ) : (
             <>
@@ -112,6 +138,17 @@ const SidebarMenu = ({
           <Link to="/cart" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
             cart
           </Link>
+          {isAdmin && (
+            <>
+              <div className="border-t border-gray-300 my-2"></div>
+              <Link to="/admin" className={`${linkClassName} bg-blue-100 hover:bg-blue-200`} onClick={() => setIsSidebarOpen(false)}>
+                📦 manage products
+              </Link>
+              <Link to="/admin" className={`${linkClassName} bg-red-100 hover:bg-red-200`} onClick={() => setIsSidebarOpen(false)}>
+                ⚙️ admin panel
+              </Link>
+            </>
+          )}
         </div>
       </div>
     </>
