@@ -141,11 +141,8 @@ const SidebarMenu = ({
           {isAdmin && (
             <>
               <div className="border-t border-gray-300 my-2"></div>
-              <Link to="/admin" className={`${linkClassName} bg-blue-100 hover:bg-blue-200`} onClick={() => setIsSidebarOpen(false)}>
-                📦 manage products
-              </Link>
-              <Link to="/admin" className={`${linkClassName} bg-red-100 hover:bg-red-200`} onClick={() => setIsSidebarOpen(false)}>
-                ⚙️ admin panel
+              <Link to="/admin" className={`${linkClassName} hover:text-[#9e9f96] text-xl `} onClick={() => setIsSidebarOpen(false)}>
+                admin
               </Link>
             </>
           )}
