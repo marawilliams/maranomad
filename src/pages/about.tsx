@@ -26,7 +26,7 @@ const About = () => {
           {data.description}
         </p>
         <h4 className="text-xl">
-          where does the name come?
+          where does the name come from?
         </h4>
         <p className="text-gray-700 text-base leading-relaxed mb-4">
           When I was younger, my family and I lived on a boat in the Bahamas. 
@@ -48,10 +48,17 @@ const About = () => {
             <h4 className="text-xl">
             a message to you! ❤︎
         </h4>
-        <p className="text-gray-700 text-base leading-relaxed mb-20">
+        <p className="text-gray-700 text-base leading-relaxed mb-4">
           Thank you so much for popping by! 
           I just wanted to take the time to say you are loved, you are so amazing, and I hope your taking care of yourself.
           with much love, mara 
+        </p>
+
+        <h4 className="text-xl">
+          a note
+        </h4>
+        <p className="text-gray-700 text-base leading-relaxed mb-20">
+          This website was designed and coded by me. As such, functionality and usability may lack in some areas. If you have any suggestions on how to improve the website, please let me know! I always love to hear feedback.
         </p>
 
   <div className="columns-1 sm:columns-3 gap-6 my-20">
