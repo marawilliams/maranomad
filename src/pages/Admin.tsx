@@ -4,6 +4,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/config";
 import customFetch from "../axios/custom";
 import { Product } from "../typings";
+import { Link } from "react-router-dom";
+
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -282,7 +284,14 @@ const Admin = () => {
               <div key={p._id} className="bg-white/60 border p-4 rounded-lg shadow-sm bg-white">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex-1">
-                    <h3 className="font-nightly text-2xl text-gray-900">{p.title}</h3>
+                    <h3 className="text-md hover:text-bold">
+                                                <Link
+                                                  to={`/product/${p._id}`}
+                                                  className="text-gray-700 font-light text-2xl hover:text-[#3a3d1c] hover:font-semibold"
+                                                >
+                                                  {p.title}
+                                                </Link>
+                                              </h3>
                     <p className="text-gray-600 text-sm mt-1">{p.description}</p>
                     <div className="flex flex-wrap gap-4 mt-2 text-sm text-gray-500">
                       <span><strong>Price:</strong> ${p.price}</span>
