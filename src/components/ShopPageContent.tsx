@@ -230,7 +230,7 @@ const ShopPageContent = ({ category, page } : { category: string; page: number; 
           status="sold"
           filters={filters}
         >
-          <ProductGrid emptyMessage="nothing's been sold :/" />
+          <ProductGrid emptyMessage="nothing's been sold :(" />
         </ProductGridWrapper>
       </section>
 
