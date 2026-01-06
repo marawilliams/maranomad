@@ -7,6 +7,7 @@ export { default as Checkout } from "./Checkout";
 export { default as Search } from "./Search";
 export { default as Login } from "./Login";
 export { default as Register } from "./Register";
+export { default as ForgotPassword } from "./ForgotPassword";
 export { default as OrderConfirmation } from "./OrderConfirmation";
 export { default as UserProfile } from "./UserProfile";
 export { default as OrderHistory } from "./OrderHistory";

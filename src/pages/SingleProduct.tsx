@@ -106,7 +106,10 @@ const SingleProduct = () => {
             {formatCategoryName(singleProduct.category)}
           </p>
           <p className="text-base font-bold lowercase">
-            {isForSale ? `$${singleProduct.price}` : "Not for sale"}
+            {singleProduct.status === "for-sale" && `$${singleProduct.price}`}
+            {singleProduct.status === "sold" && "Sold"}
+            {singleProduct.status === "not-for-sale" && "Not for sale"}
+
           </p>
           
           {/* Display size */}
@@ -121,10 +124,20 @@ const SingleProduct = () => {
 
           <Button
             mode="brown"
-            text={isForSale ? "Add to cart" : "Not for sale"}
+            text={
+              singleProduct.status === "for-sale"
+                ? "add to cart"
+                : singleProduct.status === "sold"
+                ? "sold"
+                : "not for sale"
+            }            
             onClick={handleAddToCart}
             disabled={!isForSale}
-          />
+            style={
+    singleProduct.status !== "for-sale"
+      ? { pointerEvents: "none" } // disables hover & clicks visually
+      : {}}
+          />  
           
           {/* Dropdowns */}
           <Dropdown dropdownTitle="Description">{singleProduct.description}</Dropdown>

@@ -16,9 +16,12 @@ const Checkout = () => {
       return;
     }
 
+    console.log('🛒 Starting checkout with items:', productsInCart);
+    console.log('👤 User ID:', auth.currentUser.uid);
+
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:4242/create-checkout-session', {
+      const response = await fetch('http://localhost:5000/api/create-checkout-session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -27,12 +30,30 @@ const Checkout = () => {
         }),
       });
 
-      const { url } = await response.json();
+      console.log('📡 Response status:', response.status);
+
+      const data = await response.json();
+      console.log('📥 Response data:', data);
+
+      // Check if there's an error in the response
+      if (!response.ok || data.error) {
+        console.error('❌ Backend error:', data.error);
+        toast.error(data.error || 'Checkout failed');
+        return;
+      }
+
+      if (!data.url) {
+        console.error('❌ No checkout URL received');
+        toast.error('Failed to create checkout session');
+        return;
+      }
+
+      console.log('✅ Redirecting to:', data.url);
       
       // Redirect to Stripe Checkout
-      window.location.href = url;
+      window.location.href = data.url;
     } catch (error) {
-      console.error('Checkout error:', error);
+      console.error('❌ Checkout error:', error);
       toast.error('Checkout failed. Please try again.');
     } finally {
       setLoading(false);

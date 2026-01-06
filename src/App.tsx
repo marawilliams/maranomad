@@ -14,6 +14,7 @@ import {
   SingleProduct,
   UserProfile,
   Admin,
+  ForgotPassword,
 } from "./pages";
 import { checkoutAction, searchAction } from "./actions/index";
 import { shopCategoryLoader } from "./pages/Shop";
@@ -65,6 +66,10 @@ const router = createBrowserRouter([
       {
         path: "register",
         element: <Register />,
+      },
+      {
+        path: "forgot-password",
+        element: <ForgotPassword />,
       },
       {
         path: "order-confirmation",

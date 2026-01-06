@@ -16,7 +16,7 @@ const products = [
     "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767630347/Subject_1_pwd7xm.png"
   ],
   "stock": 1,
-  "status": "not-for-sale"
+  "status": "for-sale"
 },
 {
   "title": "Led Zeppelin Jacket",
@@ -30,7 +30,7 @@ const products = [
     "https://res.cloudinary.com/dtd5ese9s/image/upload/v1767631203/Subject_4_iee2qm.png"
   ],
   "stock": 1,
-  "status": "not-for-sale"
+  "status": "for-sale"
 }
 ];
 
