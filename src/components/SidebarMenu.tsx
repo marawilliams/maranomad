@@ -107,9 +107,6 @@ const SidebarMenu = ({
               <Link to="/login" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
                 sign in
               </Link>
-              <Link to="/register" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>
-                sign up
-              </Link>
             </>
           )}
           <Link to="/cart" className={linkClassName} onClick={() => setIsSidebarOpen(false)}>

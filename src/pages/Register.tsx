@@ -1,42 +1,59 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components";
-import { checkRegisterFormData } from "../utils/checkRegisterFormData";
-import customFetch from "../axios/custom";
 import toast from "react-hot-toast";
+import { auth } from "../firebase/config";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 
 const Register = () => {
   const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // Get form data
     const formData = new FormData(e.currentTarget);
-    const data = Object.fromEntries(formData);
-    // Check if form data is valid
-    if (!checkRegisterFormData(data)) return;
+    const data = Object.fromEntries(formData) as {
+      name: string;
+      lastname: string;
+      email: string;
+      password: string;
+      confirmPassword: string;
+    };
 
-    // Check if user with this email already exists
-    const users = await customFetch.get("/users");
-    const userExists = users.data.some(
-      (user: { email: string }) => user.email === data.email
-    );
-    if (userExists) {
-      toast.error("User with this email already exists");
+    // Basic validation
+    if (!data.email || !data.password || !data.name || !data.lastname) {
+      toast.error("Please fill out all fields");
+      return;
+    }
+    if (data.password !== data.confirmPassword) {
+      toast.error("Passwords do not match");
       return;
     }
 
-    // Register user
-    const response = await customFetch.post("/users", data);
-    if (response.status === 201) {
-      toast.success("User registered successfully");
+    try {
+      // Register with Firebase
+      await createUserWithEmailAndPassword(auth, data.email, data.password);
+
+      toast.success("User registered successfully!");
       navigate("/login");
-    } else {
-      toast.error("An error occurred. Please try again");
+    } catch (error: any) {
+      // Firebase error messages
+      switch (error.code) {
+        case "auth/email-already-in-use":
+          toast.error("This email is already in use");
+          break;
+        case "auth/invalid-email":
+          toast.error("Invalid email address");
+          break;
+        case "auth/weak-password":
+          toast.error("Password should be at least 6 characters");
+          break;
+        default:
+          toast.error(error.message || "Registration failed");
+      }
     }
   };
 
   return (
-    <div className="max-w-screen-2xl mx-auto pt-24 flex items-center justify-center">
+    <div className="font-eskool text-[#3a3d1c] max-w-screen-2xl mx-auto pt-24 flex items-center justify-center">
       <form
         onSubmit={handleRegister}
         className="max-w-5xl mx-auto flex flex-col gap-5 max-sm:gap-3 items-center justify-center max-sm:px-5"
@@ -44,6 +61,7 @@ const Register = () => {
         <h2 className="text-5xl text-center mb-5 font-thin max-md:text-4xl max-sm:text-3xl max-[450px]:text-xl max-[450px]:font-normal">
           Welcome! Register here:
         </h2>
+
         <div className="flex flex-col gap-2 w-full">
           <div className="flex flex-col gap-1">
             <label htmlFor="name">Your name</label>
@@ -96,6 +114,7 @@ const Register = () => {
             />
           </div>
         </div>
+
         <Button type="submit" text="Register" mode="brown" />
         <Link
           to="/login"
@@ -108,4 +127,5 @@ const Register = () => {
     </div>
   );
 };
+
 export default Register;

@@ -17,10 +17,11 @@ interface ProductInCart extends Product {
   id: string;        // unique cart id (can combine product id + size + color)
   quantity: number;
   size: string;
-  color: string;
+  color?: string;
   stock: number;
   _id?: string;      // optional, optional because MongoDB provides it
   status?: "for-sale" | "not-for-sale" | "sold"; // optional, taken from Product
+  images: string[];
 }
 
 

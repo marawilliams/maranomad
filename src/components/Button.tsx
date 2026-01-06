@@ -20,7 +20,7 @@ const Button = ({ mode, text, ...props }: ButtonProps) => {
       {mode === "brown" && (
         <button
           {...props}
-          className="rounded-r-full text-white/90 bg-[#9e9f96] text-center text-xl font-normal tracking-[0.6px] leading-[72px] w-full h-12 flex items-center justify-center max-md:text-base hover:bg-[#3a3d1c] transition-colors duration-300"
+          className="rounded-full text-white/90 bg-[#9e9f96] text-center text-xl font-normal tracking-[0.6px] leading-[72px] w-full h-12 flex items-center justify-center max-md:text-base hover:bg-[#3a3d1c] transition-colors duration-300"
         >
           {text}
         </button>

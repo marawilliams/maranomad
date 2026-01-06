@@ -16,39 +16,39 @@ const Cart = () => {
   const dispatch = useAppDispatch();
 
   return (
-    <div className="bg-white mx-auto max-w-screen-2xl px-5 max-[400px]:px-3">
+    <div className="font-eskool text-[#3a3d1c] bg-white/50 mx-auto max-w-screen-2xl px-5 max-[400px]:px-3">
       <div className="pb-24 pt-16">
         <h1 className="text-3xl tracking-tight text-gray-900 sm:text-4xl">
-          Shopping Cart
+          shopping cart
         </h1>
         <form className="mt-12 lg:grid lg:grid-cols-12 lg:items-start lg:gap-x-12 xl:gap-x-16">
           <section aria-labelledby="cart-heading" className="lg:col-span-7">
             <h2 id="cart-heading" className="sr-only">
-              Items in your shopping cart
+              items in your shopping cart
             </h2>
 
             <ul
               role="list"
-              className="divide-y divide-gray-200 border-b border-t border-gray-200"
+              className="px-4 divide-y divide-gray-200 border-b border-t border-gray-200 hover:bg-[#3a3d1c]/10 transition-colors duration-100"
             >
               {productsInCart.map((product) => (
                 <li key={product.id} className="flex py-6 sm:py-10">
                   <div className="flex-shrink-0">
                     <img
-                      src={`/assets/${product.image}`}
-                      alt={product.title}
-                      className="h-24 w-24 object-cover object-center sm:h-48 sm:w-48"
-                    />
+  src={product.images[0]}
+  alt={product.title}
+  className="h-24 w-24 object-cover object-center sm:h-48 sm:w-48 "
+/>
                   </div>
 
-                  <div className="ml-4 flex flex-1 flex-col justify-between sm:ml-6">
+                  <div className="ml-4 flex flex-1 flex-col justify-between sm:ml-6 ">
                     <div className="relative pr-9 sm:grid sm:grid-cols-2 sm:gap-x-6 sm:pr-0">
                       <div>
                         <div className="flex justify-between">
-                          <h3 className="text-sm">
+                          <h3 className="text-md hover:text-bold">
                             <Link
                               to={`/product/${product.id}`}
-                              className="font-medium text-gray-700 hover:text-gray-800"
+                              className=" text-gray-700 hover:text-[#3a3d1c] hover:font-semibold"
                             >
                               {product.title}
                             </Link>
@@ -62,27 +62,20 @@ const Cart = () => {
                             </p>
                           ) : null}
                         </div>
+                        <div className="mt-1 flex text-sm">
+                          <p className="text-gray-500">{product.color}</p>
+                          {product.brand ? (
+                            <p className="ml-4 border-l border-gray-200 pl-4 text-gray-500">
+                              {product.brand}
+                            </p>
+                          ) : null}
+                        </div>
                         <p className="mt-1 text-sm font-medium text-gray-900">
                           ${product.price}
                         </p>
                       </div>
 
                       <div className="mt-4 sm:mt-0 sm:pr-9">
-                        <label htmlFor="quantity mr-5">Quantity: </label>
-                        <input
-                          type="number"
-                          id="quantity"
-                          className="w-16 h-7 indent-1 bg-white border"
-                          value={product?.quantity}
-                          onChange={(e) => {
-                            dispatch(
-                              updateProductQuantity({
-                                id: product?.id,
-                                quantity: parseInt(e.target.value),
-                              })
-                            );
-                          }}
-                        />
 
                         <div className="absolute right-0 top-0">
                           <button
@@ -154,7 +147,7 @@ const Cart = () => {
                       Learn more about how shipping is calculated
                     </span>
                     <QuestionMarkCircleIcon
-                      className="h-5 w-5 text-secondaryBrown"
+                      className="h-5 w-5 text-[#3a3d1c]/70"
                       aria-hidden="true"
                     />
                   </a>
@@ -174,7 +167,7 @@ const Cart = () => {
                       Learn more about how tax is calculated
                     </span>
                     <QuestionMarkCircleIcon
-                      className="h-5 w-5 text-secondaryBrown"
+                      className="h-5 w-5 text-[#3a3d1c]/70"
                       aria-hidden="true"
                     />
                   </a>
@@ -197,7 +190,7 @@ const Cart = () => {
               <div className="mt-6">
                 <Link
                   to="/checkout"
-                  className="text-white bg-secondaryBrown text-center text-xl font-normal tracking-[0.6px] leading-[72px] w-full h-12 flex items-center justify-center max-md:text-base"
+                  className="rounded-full text-white/80 bg-[#3a3d1c]/90 text-center  hover:bg-[#3a3d1c]/70 text-xl font-normal tracking-[0.6px] leading-[72px] w-full h-12 flex items-center justify-center max-md:text-base"
                 >
                   Checkout
                 </Link>

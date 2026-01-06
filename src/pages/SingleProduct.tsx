@@ -3,9 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAppDispatch } from "../hooks";
 import { addProductToTheCart } from "../features/cart/cartSlice";
 import toast from "react-hot-toast";
-import WithSelectInputWrapper from "../utils/withSelectInputWrapper";
-import WithNumberInputWrapper from "../utils/withNumberInputWrapper";
-import { Button, Dropdown, QuantityInput, StandardSelectInput } from "../components";
+import { Button, Dropdown } from "../components";
 import { formatCategoryName } from "../utils/formatCategoryName";
 
 const SingleProduct = () => {
@@ -14,15 +12,8 @@ const SingleProduct = () => {
   const [singleProduct, setSingleProduct] = useState<Product | null>(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const [size, setSize] = useState<string>("xs");
-  const [color, setColor] = useState<string>("black");
-  const [quantity, setQuantity] = useState<number>(1);
-
   const params = useParams<{ id: string }>();
   const dispatch = useAppDispatch();
-
-  const SelectInputUpgrade = WithSelectInputWrapper(StandardSelectInput);
-  const QuantityInputUpgrade = WithNumberInputWrapper(QuantityInput);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -47,14 +38,13 @@ const SingleProduct = () => {
 
     dispatch(
       addProductToTheCart({
-        id: singleProduct._id + size + color,
+        id: singleProduct._id,
         title: singleProduct.title,
         category: singleProduct.category,
         price: singleProduct.price,
-        quantity,
+        quantity: 1, // Always 1 for one-of-a-kind items
         size: singleProduct.size,
         brand: singleProduct.brand,
-        color,
         stock: singleProduct.stock,
         images: singleProduct.images,
       })
@@ -91,14 +81,12 @@ const SingleProduct = () => {
                 alt={`${singleProduct.title} ${currentImageIndex + 1}`}
                 className="w-full h-full object-contain"
               />
-              {/* Previous */}
               <button
                 onClick={prevImage}
                 className="text-[#09140d] absolute left-2 top-1/2 -translate-y-1/2  p-2 hover:text-[#9e9f96]  transition-colors duration-500"
               >
                 ◀
               </button>
-              {/* Next */}
               <button
                 onClick={nextImage}
                 className="text-[#09140d] absolute right-2 top-1/2 -translate-y-1/2  p-2 hover:text-[#9e9f96] transition-colors duration-500"
@@ -111,27 +99,33 @@ const SingleProduct = () => {
 
         {/* Details */}
         <div className="w-full flex flex-col gap-5 mt-9">
-          <h1 className="font-nightly font-light tracking-[2px] text-5xl lowercase"> {singleProduct.title}</h1>
+          <h1 className="font-nightly font-light tracking-[2px] text-5xl lowercase">
+            {singleProduct.title}
+          </h1>
           <p className="text-base text-secondaryBrown lowercase">
             {formatCategoryName(singleProduct.category)}
           </p>
           <p className="text-base font-bold lowercase">
             {isForSale ? `$${singleProduct.price}` : "Not for sale"}
           </p>
+          
           {/* Display size */}
-        <p className="text-base text-gray-700">
-        <span className="font-semibold">size:</span> {singleProduct.size}
-        </p>
+          <p className="text-base text-gray-700">
+            <span className="font-semibold">size:</span> {singleProduct.size}
+          </p>
+          
           {/* Display brand */}
-        <p className="text-base text-gray-700">
-        <span className="font-semibold">brand:</span> {singleProduct.brand}
-        </p>
+          <p className="text-base text-gray-700">
+            <span className="font-semibold">brand:</span> {singleProduct.brand}
+          </p>
+
           <Button
             mode="brown"
             text={isForSale ? "Add to cart" : "Not for sale"}
             onClick={handleAddToCart}
             disabled={!isForSale}
           />
+          
           {/* Dropdowns */}
           <Dropdown dropdownTitle="Description">{singleProduct.description}</Dropdown>
         </div>

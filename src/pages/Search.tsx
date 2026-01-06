@@ -22,7 +22,7 @@ const Search = () => {
         <input
           type="text"
           placeholder="search products"
-          className="bg-white/50 rounded-l-full border border-gray-300 focus:border-gray-400 h-12 text-xl px-3 w-full outline-none max-sm:text-lg"
+          className="bg-white/50 rounded-full mr-7 border border-gray-300 focus:border-gray-400 h-12 text-xl px-3 w-full outline-none max-sm:text-lg"
           name="searchInput"
         />
         <div className="w-52 max-sm:w-40">
