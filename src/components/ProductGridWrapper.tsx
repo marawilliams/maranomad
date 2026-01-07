@@ -116,11 +116,10 @@ if (productFilters?.types && productFilters.types.length > 0) {
       setProducts(visibleProducts);
       dispatch(setShowingProducts(visibleProducts.length));
     },
-    [category, dispatch, totalProducts]
+    [category, dispatch, limit]
   );
 
   useEffect(() => {
-    toast.success("Products queried successfully!");
     getSearchedProducts(searchQuery || "", sortCriteria || "", page || 1, status, filters);
   }, [searchQuery, sortCriteria, page, status, filters, getSearchedProducts]);
 

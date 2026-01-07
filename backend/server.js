@@ -259,7 +259,14 @@ const Product = require('./models/Product');
 const User = require('./models/User');
 const Order = require('./models/Order');
 
+const userRoutes = require("./routes/userRoutes"); // or wherever your users route file is
 
+// Middleware
+
+// Mount the users router at /api/users
+app.use("/api/users", userRoutes);
+
+// ... rest of your server setup
 
 
 // Product CRUD for admin
@@ -290,6 +297,9 @@ app.delete('/api/products/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// In your backend server file (server.js or wherever your routes are)
+// GET all products
 
 // ✅ Stripe Routes
 app.post('/api/create-checkout-session', async (req, res) => {
@@ -401,6 +411,33 @@ app.post('/api/create-customer', async (req, res) => {
   }
 });
 
+
+// In your backend server file (server.js or wherever your routes are)
+
+// GET all products
+app.get('/api/products', async (req, res) => {
+  try {
+    const products = await Product.find({});
+    res.json(products);
+  } catch (error) {
+    console.error('Error fetching products:', error);
+    res.status(500).json({ error: 'Failed to fetch products' });
+  }
+});
+
+// GET single product by ID
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(product);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    res.status(500).json({ error: 'Invalid product ID or product not found' });
+  }
+});
 
 app.get('/api/products/availability', async (req, res) => {
   try {
@@ -633,9 +670,10 @@ app.post('/api/release-reservations', async (req, res) => {
       },
       { 
         $set: { 
+          reservedAt: null,
           reservedBy: null, 
           reservedUntil: null,
-          status: "available" // Or whatever your 'not reserved' status is
+          status: "for-sale" // Or whatever your 'not reserved' status is
         } 
       }
     );
