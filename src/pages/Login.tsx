@@ -1,10 +1,10 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Button } from "../components";
 import { useEffect, useState } from "react";
 import customFetch from "../axios/custom";
 import { formatDate } from "../utils/formatDate";
 import { auth } from "../firebase/config";
-import { signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { signInWithEmailAndPassword, signOut, sendEmailVerification } from "firebase/auth"; // ✅ Added sendEmailVerification
 import toast from "react-hot-toast";
 import { store } from "../store";
 import { setLoginStatus } from "../features/auth/authSlice";
@@ -20,11 +20,9 @@ interface User {
 
 interface Order {
   id: string;
-
   orderDate?: string;
   subtotal?: number;
   orderStatus?: 'paid' | 'processing' | 'shipped' | 'delivered' | 'refunded';
-
   products?: {
     productId: string;
     title: string;
@@ -32,7 +30,6 @@ interface Order {
     price: number;
     size?: string;
   }[];
-
   data?: {
     firstName?: string;
     lastName?: string;
@@ -44,7 +41,6 @@ interface Order {
     country?: string;
     phone?: string;
   };
-
   paymentMethod?: {
     brand?: string;
     last4?: string;
@@ -53,22 +49,24 @@ interface Order {
   };
 }
 
-
 const Login = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
   const [user, setUser] = useState<User | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [profile, setProfile] = useState<User | null>(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [showVerificationBanner, setShowVerificationBanner] = useState(false); // ✅ Added
+  const [unverifiedEmail, setUnverifiedEmail] = useState(""); // ✅ Added
   const [editForm, setEditForm] = useState({
     name: "",
     lastname: "",
     email: "",
     phone: ""
   });
-  // Load user from localStorage on mount
+
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
@@ -78,19 +76,26 @@ const Login = () => {
     }
   }, []);
 
-  // Fetch profile and orders for logged-in user
+  // In Login.tsx, add this useEffect after your existing useEffects:
+
+useEffect(() => {
+  // Check if redirected from registration
+  if (location.state?.showVerification && location.state?.email) {
+    setShowVerificationBanner(true);
+    setUnverifiedEmail(location.state.email);
+  }
+}, []); // ✅ Run once on mount
+
   useEffect(() => {
     const fetchData = async () => {
       if (!user?.uid) return;
       setLoadingOrders(true);
 
       try {
-        // Fetch profile from MongoDB
         const profileRes = await customFetch.get(`/users/${user.uid}`);
         const fetchedProfile = profileRes.data;
         setProfile(fetchedProfile);
 
-        // Initialize edit form
         setEditForm({
           name: fetchedProfile.name || "",
           lastname: fetchedProfile.lastname || "",
@@ -98,7 +103,6 @@ const Login = () => {
           phone: fetchedProfile.phone || ""
         });
 
-        // Fetch orders from MongoDB
         const ordersRes = await customFetch.get(`/orders/${user.uid}`);
         setOrders(ordersRes.data || []);
       } catch (err) {
@@ -130,6 +134,15 @@ const Login = () => {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       const loggedInUser = userCredential.user;
 
+      // ✅ CHECK EMAIL VERIFICATION
+      if (!loggedInUser.emailVerified) {
+        setShowVerificationBanner(true);
+        setUnverifiedEmail(email);
+        await signOut(auth);
+        setLoading(false);
+        return;
+      }
+
       const userData: User = { email: loggedInUser.email!, uid: loggedInUser.uid };
       localStorage.setItem("user", JSON.stringify(userData));
       store.dispatch(setLoginStatus(true));
@@ -139,9 +152,28 @@ const Login = () => {
       navigate("/");
     } catch (error: any) {
       console.error("Login error:", error);
-      toast.error(error.message || "Login failed. Check your credentials.");
+      toast.error("Login failed. Please try again or register for an account.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  // ✅ RESEND VERIFICATION EMAIL
+  const handleResendVerification = async () => {
+    const password = (document.querySelector('input[name="password"]') as HTMLInputElement)?.value;
+
+    if (!password) {
+      toast.error("Please enter your password");
+      return;
+    }
+
+    try {
+      const userCredential = await signInWithEmailAndPassword(auth, unverifiedEmail, password);
+      await sendEmailVerification(userCredential.user);
+      await signOut(auth);
+      toast.success("Verification email sent! Check your inbox.");
+    } catch (error: any) {
+      toast.error("Failed to resend verification email");
     }
   };
 
@@ -164,8 +196,6 @@ const Login = () => {
     try {
       await customFetch.delete(`/users/${user.uid}`);
       toast.success("Account deleted successfully!");
-
-      // Log out user
       await handleLogout();
       navigate("/");
     } catch (err: any) {
@@ -185,6 +215,7 @@ const Login = () => {
 
         {user ? (
           <div className="w-full max-w-3xl">
+            {/* ALL YOUR EXISTING LOGGED-IN USER UI - UNCHANGED */}
             <div className="mb-6">
               <h3 className="text-2xl font-semibold">Account</h3>
             </div>
@@ -218,7 +249,6 @@ const Login = () => {
 
                     try {
                       await customFetch.put(`/users/${user!.uid}`, editForm);
-
                       setProfile({ ...profile, ...editForm });
                       setIsEditing(false);
                       toast.success("Profile updated successfully!");
@@ -348,12 +378,6 @@ const Login = () => {
                           {order.data.phone && <div>Phone: {order.data.phone}</div>}
                         </div>
                       )}
-                      {/*{order.paymentMethod && (
-                        <div className="text-sm mt-2 text-muted">
-                          Paid with {order.paymentMethod.brand?.toUpperCase()} •••• {order.paymentMethod.last4}
-                        </div>
-                        )}*/}
-
                     </div>
                   ))}
                 </div>
@@ -372,6 +396,30 @@ const Login = () => {
           </div>
         ) : (
           <>
+            {/* ✅ VERIFICATION BANNER */}
+            {showVerificationBanner && (
+              <div className="w-full max-w-md bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+                <h3 className="font-semibold text-blue-800 mb-2">📧 Verify Your Email</h3>
+                <p className="text-sm text-blue-700 mb-3">
+                  Please check your inbox at <strong>{unverifiedEmail}</strong> and click the verification link to activate your account.
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleResendVerification}
+                    className="text-sm bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  >
+                    Resend Email
+                  </button>
+                  <button
+                    onClick={() => setShowVerificationBanner(false)}
+                    className="text-sm bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleLogin} className="flex flex-col gap-5 w-full">
               <div className="flex flex-col gap-2 w-full">
                 <div className="flex flex-col gap-1">

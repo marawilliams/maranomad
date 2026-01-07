@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components";
 import toast from "react-hot-toast";
 import { auth } from "../firebase/config";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth"; // ✅ Added sendEmailVerification
 
 const Register = () => {
   const navigate = useNavigate();
@@ -30,7 +30,10 @@ const Register = () => {
 
     try {
       // Register with Firebase
-      await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      
+      // ✅ Send verification email
+      await sendEmailVerification(userCredential.user);
 
       // Create Stripe customer and Firestore user mapping via backend
       try {
@@ -46,8 +49,7 @@ const Register = () => {
         console.warn('Could not create Stripe customer:', e);
       }
 
-      toast.success("User registered successfully!");
-      navigate("/login");
+      navigate("/login", { state: { showVerification: true, email: data.email } }); // ✅ Pass flag and email
     } catch (error: any) {
       // Firebase error messages
       switch (error.code) {
