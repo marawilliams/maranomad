@@ -76,27 +76,52 @@ app.post(
     try {
       switch (event.type) {
 
-        // 1️⃣ Checkout session completed: create order (card info optional)
+        // 1️⃣ Checkout session completed: create order
         case "checkout.session.completed": {
           const session = event.data.object;
 
           console.log("✅ Checkout completed:", session.id);
 
+          // ✅ DEFINE VARIABLES FIRST - moved from below
           const userId = session.metadata.userId;
           const items = JSON.parse(session.metadata.items || "[]");
           const productIds = JSON.parse(session.metadata.productIds || "[]")
             .filter(Boolean)
             .map((id) => new mongoose.Types.ObjectId(id));
 
-          // Mark products as sold
-          if (productIds.length) {
-            await Product.updateMany(
-              { _id: { $in: productIds }, status: { $ne: "sold" } },
-              { $set: { status: "sold" } }
+          console.log(`📦 Processing order for user: ${userId}`);
+          console.log(`📦 Products: ${productIds.length} items`);
+
+          // ✅ Mark products as sold (with proper checks)
+          if (productIds.length > 0) {
+            const result = await Product.updateMany(
+              { 
+                _id: { $in: productIds },
+                reservedBy: userId, // Only update if reserved by this user
+                status: 'reserved' // Only update if currently reserved
+              },
+              { 
+                $set: { 
+                  status: 'sold',
+                  soldAt: new Date(),
+                  soldTo: userId,
+                  // Clear reservation fields
+                  reservedBy: null,
+                  reservedAt: null,
+                  reservedUntil: null, // ✅ Fixed: was reservationExpiresAt
+                } 
+              }
             );
+            
+            console.log(`✅ Marked ${result.modifiedCount}/${productIds.length} products as sold`);
+            
+            if (result.modifiedCount < productIds.length) {
+              console.warn(`⚠️ Warning: Only ${result.modifiedCount} out of ${productIds.length} products were marked as sold`);
+              console.warn(`   This might mean some products were not reserved by user ${userId}`);
+            }
           }
 
-          // Shipping info
+          // ✅ Shipping info
           const shippingName =
             session.shipping_details?.name || session.customer_details?.name || "";
           const [firstName, ...rest] = shippingName.split(" ");
@@ -130,23 +155,30 @@ app.post(
             phone: session.customer_details?.phone || session.shipping_details?.phone || "",
           };
 
-          // Try retrieving PaymentIntent for card info (optional)
+          console.log(`📍 Shipping to: ${shippingAddress.city}, ${shippingAddress.region}`);
+
+          // ✅ Try retrieving PaymentIntent for card info (optional)
           let paymentMethod = null;
           if (session.payment_intent) {
-            const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
-            const charge = paymentIntent.charges?.data?.[0];
-            if (charge?.payment_method_details?.card) {
-              const card = charge.payment_method_details.card;
-              paymentMethod = {
-                brand: card.brand,
-                last4: card.last4,
-                expMonth: card.exp_month,
-                expYear: card.exp_year,
-              };
+            try {
+              const paymentIntent = await stripe.paymentIntents.retrieve(session.payment_intent);
+              const charge = paymentIntent.charges?.data?.[0];
+              if (charge?.payment_method_details?.card) {
+                const card = charge.payment_method_details.card;
+                paymentMethod = {
+                  brand: card.brand,
+                  last4: card.last4,
+                  expMonth: card.exp_month,
+                  expYear: card.exp_year,
+                };
+                console.log(`💳 Payment method: ${card.brand} •••• ${card.last4}`);
+              }
+            } catch (err) {
+              console.warn("⚠️ Could not retrieve payment method details:", err.message);
             }
           }
 
-          // Save order in MongoDB
+          // ✅ Save order in MongoDB
           const order = new Order({
             userId,
             products: items.map((item, i) => ({
@@ -164,7 +196,9 @@ app.post(
           });
 
           await order.save();
-          console.log("✅ Order created:", order._id);
+          console.log("✅ Order created in MongoDB:", order._id);
+          console.log(`💰 Order total: $${order.subtotal}`);
+          
           break;
         }
 
@@ -186,14 +220,18 @@ app.post(
             expYear: card.exp_year,
           };
 
-          // Update order if it exists
-          const order = await Order.findOne({ paymentIntentId: paymentIntent.id });
+          // Update order if it exists and doesn't have payment method yet
+          const order = await Order.findOne({ 
+            paymentIntentId: paymentIntent.id,
+            paymentMethod: null // Only update if payment method is missing
+          });
+          
           if (order) {
             order.paymentMethod = paymentMethod;
             await order.save();
-            console.log(`💳 Card info updated: ${card.brand} •••• ${card.last4}`);
+            console.log(`💳 Card info updated for order ${order._id}: ${card.brand} •••• ${card.last4}`);
           } else {
-            console.log("ℹ️ No matching order found for PaymentIntent:", paymentIntent.id);
+            console.log("ℹ️ No matching order found (or payment method already set) for PaymentIntent:", paymentIntent.id);
           }
 
           break;
@@ -201,12 +239,13 @@ app.post(
 
         // Ignore other events safely
         default:
-          console.log("ℹ️ Ignored event:", event.type);
+          console.log("ℹ️ Unhandled event type:", event.type);
       }
 
       res.json({ received: true });
     } catch (err) {
       console.error("❌ Webhook processing error:", err);
+      console.error("Stack trace:", err.stack);
       res.status(500).send("Webhook handler failed");
     }
   }
@@ -220,12 +259,8 @@ const Product = require('./models/Product');
 const User = require('./models/User');
 const Order = require('./models/Order');
 
-// ✅ Routes
-const productRoutes = require("./routes/productRoutes");
-const userRoutes = require("./routes/userRoutes");
 
-app.use("/api/products", productRoutes);
-app.use("/api/users", userRoutes);
+
 
 // Product CRUD for admin
 app.post('/api/products', async (req, res) => {
@@ -366,6 +401,52 @@ app.post('/api/create-customer', async (req, res) => {
   }
 });
 
+
+app.get('/api/products/availability', async (req, res) => {
+  try {
+    const { ids, uid } = req.query;
+
+    if (!ids) {
+      return res.status(400).json({ error: 'No product IDs provided' });
+    }
+
+    // Convert ids to array
+    const idArray = Array.isArray(ids)
+      ? ids
+      : ids.split(',').map(id => id.trim());
+
+    // Validate MongoDB ObjectIds
+    const validIds = idArray.filter(id =>
+      mongoose.Types.ObjectId.isValid(id)
+    );
+
+    if (validIds.length === 0) {
+      return res.status(400).json({ error: 'No valid product IDs provided' });
+    }
+
+    const products = await Product.find(
+      { _id: { $in: validIds } },
+      { status: 1 } // only fetch what we need
+    );
+
+    const availability = {};
+
+    products.forEach(product => {
+      availability[product._id.toString()] =
+        product.status === 'for-sale'; // adjust if needed
+    });
+
+    return res.json({
+      uid, // optional, but returned since frontend sends it
+      availability,
+    });
+
+  } catch (err) {
+    console.error('Error checking availability:', err);
+    res.status(500).json({ error: 'Failed to check product availability' });
+  }
+});
+
 // Get orders for a user from MongoDB
 // Get orders for a user from MongoDB
 app.get('/api/orders/:uid', async (req, res) => {
@@ -454,6 +535,177 @@ app.get('/api/verify-session/:sessionId', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
+
+const RESERVATION_TIME = 60 * 60 * 1000; // 1 hour in ms
+
+// Find this endpoint in server.js and update it:
+app.post('/api/reserve-products', async (req, res) => {
+  try {
+    const { productIds, userId } = req.body;
+    if (!productIds || !userId) {
+      return res.status(400).json({ error: 'Missing productIds or userId' });
+    }
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + RESERVATION_TIME);
+
+    console.log(`🔒 Attempting to reserve ${productIds.length} products for user ${userId}`);
+
+    const reservedProducts = [];
+    const unavailableProducts = [];
+
+    for (const id of productIds) {
+      const product = await Product.findOneAndUpdate(
+        {
+          _id: id,
+          $or: [
+            { status: 'for-sale' }, // ✅ Changed from 'available'
+            { status: 'reserved', reservedUntil: { $lt: now } } // Expired reservation
+          ]
+        },
+        {
+          $set: {
+            status: 'reserved',
+            reservedBy: userId,
+            reservedAt: now,
+            reservedUntil: expiresAt
+          }
+        },
+        { new: true } // Return updated document
+      );
+
+      if (product) {
+        reservedProducts.push(product);
+        console.log(`✅ Reserved product: ${product.title} (${product._id})`);
+      } else {
+        unavailableProducts.push(id);
+        console.log(`❌ Could not reserve product: ${id}`);
+      }
+    }
+
+    if (unavailableProducts.length > 0) {
+      console.warn(`⚠️ ${unavailableProducts.length} products unavailable`);
+      return res.status(409).json({
+        error: 'Some products are unavailable',
+        reserved: reservedProducts,
+        unavailable: unavailableProducts
+      });
+    }
+
+    console.log(`✅ Successfully reserved ${reservedProducts.length} products for user ${userId}`);
+    
+    res.json({
+      success: true,
+      reserved: reservedProducts,
+      expiresAt: expiresAt.toISOString(),
+    });
+  } catch (err) {
+    console.error('❌ Error reserving products:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// ✅ Add this endpoint in server.js (after other routes)
+// server.js
+
+// Ensure this middleware is at the TOP of your file
+app.use(express.json()); 
+
+app.post('/api/release-reservations', async (req, res) => {
+  try {
+    const { productIds, userId } = req.body;
+
+    // Log this to your terminal so you can see if the "leave page" trigger works
+    console.log(`Attempting to release items for user: ${userId}`);
+
+    if (!productIds || !userId || productIds.length === 0) {
+      return res.status(200).json({ message: "Nothing to release" });
+    }
+
+    // Convert string IDs to ObjectIds if your Schema requires it
+    // If you're using Mongoose, it usually handles the string-to-ObjectId conversion automatically
+    const result = await Product.updateMany(
+      { 
+        _id: { $in: productIds }, 
+        reservedBy: userId 
+      },
+      { 
+        $set: { 
+          reservedBy: null, 
+          reservedUntil: null,
+          status: "available" // Or whatever your 'not reserved' status is
+        } 
+      }
+    );
+
+    console.log(`✅ Released ${result.modifiedCount} items.`);
+    res.status(200).json({ message: "Reservations released" });
+  } catch (err) {
+    console.error("Release error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get('/api/check-reservation/:userId', async (req, res) => {
+  try {
+    const userId = req.params.userId;
+    const now = new Date();
+
+    const reservedProducts = await Product.find({
+      reservedBy: userId,
+      reservedUntil: { $gt: now },
+      status: 'reserved',
+    });
+
+    if (reservedProducts.length === 0) {
+      return res.json({ hasReservation: false});
+    }
+
+    const earliestExpiry = reservedProducts.reduce((earliest, product) => {
+      return product.reservedUntil < earliest ? product.reservedUntil : earliest;
+    }, reservedProducts[0].reservedUntil);
+
+    res.json({
+      hasReservation: true,
+      products: reservedProducts,
+      expiresAt: earliestExpiry,
+      timeRemaining: earliestExpiry - now,
+    });
+  } catch (err) {
+    console.error('❌ Error checking reservations:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// Find this setInterval and update it:
+setInterval(async () => {
+  try {
+    const now = new Date();
+    const result = await Product.updateMany(
+      {
+        status: 'reserved',
+        reservedUntil: { $lt: now },
+      },
+      {
+        $set: {
+          status: 'for-sale', // ✅ Changed from 'available'
+          reservedBy: null,
+          reservedAt: null,
+          reservedUntil: null,
+        }
+      }
+    );
+    
+    if (result.modifiedCount > 0) {
+      console.log(`🧹 Cleaned up ${result.modifiedCount} expired reservations`);
+    }
+  } catch (err) {
+    console.error('❌ Error cleaning up reservations:', err);
+  }
+}, 60000); // Every minute
 
 const PORT = process.env.PORT || 5000;
 

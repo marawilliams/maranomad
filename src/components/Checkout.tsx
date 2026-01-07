@@ -1,180 +1,191 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAppSelector, useAppDispatch } from "../hooks";
 import { clearCart } from "../features/cart/cartSlice";
 import { auth } from "../firebase/config";
 import toast from "react-hot-toast";
+import customFetch from "../axios/custom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const Checkout = () => {
-  const [loading, setLoading] = useState(false);
-  const [reservedUntil, setReservedUntil] = useState<Date | null>(null);
-  const [timeLeft, setTimeLeft] = useState<string>(""); // display countdown
-
-  const { productsInCart, subtotal } = useAppSelector((state) => state.cart);
+  const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useAppDispatch();
 
-  // 🕒 Countdown timer logic
+  const { productsInCart, subtotal } = useAppSelector((state) => state.cart);
+
+  const passedExpiresAt = location.state?.expiresAt;
+  const reservationMade = location.state?.reservationMade;
+
+  const [loading, setLoading] = useState(false);
+  const [expiresAt, setExpiresAt] = useState<Date | null>(
+    passedExpiresAt ? new Date(passedExpiresAt) : null
+  );
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [percentRemaining, setPercentRemaining] = useState<number>(100);
+
+  // Refs to track state for cleanup without triggering re-renders
+  const shouldRelease = useRef(true);
+  const productIdsRef = useRef<string[]>(productsInCart.map((p) => p.id));
+  const reservationActive = useRef(!!reservationMade);
+  
+  const TOTAL_TIME = 60 * 60 * 1000;
+
   useEffect(() => {
-    if (!reservedUntil) return;
-
-    const interval = setInterval(() => {
-      const now = new Date();
-      const diff = reservedUntil.getTime() - now.getTime();
-
-      if (diff <= 0) {
-        setTimeLeft("00:00");
-        clearInterval(interval);
-        releaseProducts(); // auto-release on timeout
-        toast.error("Your hold on items expired.");
-      } else {
-        const minutes = Math.floor(diff / 1000 / 60);
-        const seconds = Math.floor((diff / 1000) % 60);
-        setTimeLeft(
-          `${minutes.toString().padStart(2, "0")}:${seconds
-            .toString()
-            .padStart(2, "0")}`
-        );
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [reservedUntil]);
-
-  // Release products on leaving page
-  const releaseProducts = async () => {
-    if (!auth.currentUser || productsInCart.length === 0) return;
-    try {
-      await fetch("http://localhost:5000/api/products/release", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: auth.currentUser.uid }),
-      });
-      console.log("Products released");
-    } catch (err) {
-      console.error("Failed to release products", err);
+    if (!reservationMade || !passedExpiresAt || productsInCart.length === 0) {
+      toast.error("Invalid session. Redirecting to cart...");
+      navigate("/cart");
     }
+  }, [reservationMade, passedExpiresAt, productsInCart.length, navigate]);
+
+
+// ✅ 1. The Logic to fire the request
+const releaseItems = async (source: string) => {
+  if (shouldRelease.current && reservationActive.current && auth.currentUser) {
+    console.log(`🚀 [${source}] Starting release for:`, productIdsRef.current);
+
+    const body = JSON.stringify({
+      productIds: productIdsRef.current,
+      userId: auth.currentUser.uid,
+    });
+
+    const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+    // We use native fetch + keepalive: true
+    // This is the "magic" that lets the request finish after the tab closes
+    fetch(`${baseUrl}/release-reservations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true, 
+    }).catch(err => console.error("Fetch Error:", err));
+  }
+};
+
+// ✅ 2. The Listeners
+useEffect(() => {
+  const handleUnload = () => {
+    releaseItems("BeforeUnload/TabClose");
   };
 
+  // This catches browser-level events (Refresh/Close Tab)
+  window.addEventListener("beforeunload", handleUnload);
+
+  return () => {
+    // This catches React-level events (Navigating back to Cart)
+    releaseItems("ReactUnmount");
+    window.removeEventListener("beforeunload", handleUnload);
+  };
+}, []);
+
+  // ✅ 3. Timer Logic
   useEffect(() => {
-    window.addEventListener("beforeunload", releaseProducts);
-    return () => window.removeEventListener("beforeunload", releaseProducts);
-  }, [productsInCart]);
+    if (!expiresAt) return;
+
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = expiresAt.getTime() - now;
+
+      if (remaining <= 0) {
+        setTimeRemaining(0);
+        setPercentRemaining(0);
+        reservationActive.current = false; 
+        toast.error("Reservation expired!");
+        navigate("/cart");
+      } else {
+        setTimeRemaining(remaining);
+        const percent = (remaining / TOTAL_TIME) * 100;
+        setPercentRemaining(Math.max(0, Math.min(100, percent)));
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [expiresAt, navigate]);
 
   const handleCheckout = async () => {
     if (!auth.currentUser) {
-      toast.error("Please log in to checkout");
-      return;
-    }
-
-    if (productsInCart.length === 0) {
-      toast.error("Your cart is empty");
+      toast.error("Please log in");
       return;
     }
 
     setLoading(true);
+
     try {
-      const userId = auth.currentUser.uid;
+      const { data } = await customFetch.post("/create-checkout-session", {
+        items: productsInCart.map((item) => ({
+          id: item.id,
+          title: item.title,
+          price: item.price,
+          quantity: item.quantity ?? 1,
+        })),
+        userId: auth.currentUser.uid,
+      });
 
-      // 1️⃣ Reserve all products
-      const reserveResponses = await Promise.all(
-        productsInCart.map((product) =>
-          fetch(`http://localhost:5000/api/products/${product.id}/reserve`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ uid: userId }),
-          }).then((res) => res.json())
-        )
-      );
-
-      const failed = reserveResponses.find((r) => r.error);
-      if (failed) {
-        toast.error(failed.message || "Some items are unavailable");
-        setLoading(false);
-        return;
+      if (data.url) {
+        // ✅ Stop the cleanup from firing because we are paying!
+        shouldRelease.current = false;
+        dispatch(clearCart());
+        window.location.href = data.url;
       }
-
-      // Set the timer from the first product's reservedUntil
-      const reservedTime = new Date(reserveResponses[0].reservedUntil);
-      setReservedUntil(reservedTime);
-
-      // 2️⃣ Create Stripe checkout session
-      const response = await fetch(
-        "http://localhost:5000/api/create-checkout-session",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: productsInCart,
-            userId,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok || data.error) {
-        toast.error(data.error || "Checkout failed");
-        setLoading(false);
-        return;
-      }
-
-      if (!data.url) {
-        toast.error("Failed to create checkout session");
-        setLoading(false);
-        return;
-      }
-
-      // 3️⃣ Redirect to Stripe
-      window.location.href = data.url;
-    } catch (err) {
-      console.error("Checkout error:", err);
-      toast.error("Checkout failed. Please try again.");
-    } finally {
+    } catch (error: any) {
+      toast.error("Checkout failed");
       setLoading(false);
     }
   };
 
+  const formatTimeRemaining = (ms: number) => {
+    const min = Math.floor(ms / 60000);
+    const sec = Math.floor((ms % 60000) / 1000);
+    return `${min}:${sec.toString().padStart(2, "0")}`;
+  };
+
+  if (productsInCart.length === 0) return null;
+
   return (
-    <div className="max-w-screen-2xl mx-auto px-5 pt-24">
-      <h1 className="text-3xl font-bold mb-4">Checkout</h1>
+    <div className="max-w-screen-lg mx-auto px-5 py-24">
+      <button onClick={() => navigate("/cart")} className="mb-4 text-gray-600 hover:underline">
+        ← Back to Cart
+      </button>
 
-      {reservedUntil && (
-        <div className="mb-4 text-red-600 font-bold">
-          ⏰ Hold expires in: {timeLeft}
+      <div className="bg-white p-6 rounded-xl shadow-lg border border-gray-100">
+        <h1 className="text-2xl font-bold mb-4">Checkout</h1>
+        
+        {/* Timer Bar */}
+        <div className="mb-6">
+          <div className="flex justify-between text-sm mb-1 font-medium text-red-600">
+            <span>Reservation expires in: {formatTimeRemaining(timeRemaining)}</span>
+            <span>{Math.floor(percentRemaining)}%</span>
+          </div>
+          <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+            <div 
+              className="bg-red-500 h-full transition-all duration-1000 ease-linear"
+              style={{ width: `${percentRemaining}%` }}
+            />
+          </div>
         </div>
-      )}
 
-      <div className="bg-white p-6 rounded-lg shadow-md max-w-2xl mx-auto">
-        <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-
-        {productsInCart.length === 0 ? (
-          <p className="text-gray-500">Your cart is empty.</p>
-        ) : (
-          <>
-            {productsInCart.map((item) => (
-              <div
-                key={item.id}
-                className="flex justify-between py-2 border-b last:border-b-0"
-              >
-                <span>{item.title}</span>
-                <span>${item.price}</span>
-              </div>
-            ))}
-
-            <div className="border-t mt-4 pt-4">
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total:</span>
-                <span>${subtotal}</span>
-              </div>
+        {/* Summary */}
+        <div className="space-y-4 border-t pt-4">
+          {productsInCart.map((item) => (
+            <div key={item.id} className="flex justify-between">
+              <span>{item.title} x {item.quantity || 1}</span>
+              <span className="font-bold">${(item.price * (item.quantity || 1)).toFixed(2)}</span>
             </div>
+          ))}
+          <div className="flex justify-between text-xl font-bold border-t pt-4">
+            <span>Total</span>
+            <span>${subtotal.toFixed(2)}</span>
+          </div>
+        </div>
 
-            <button
-              onClick={handleCheckout}
-              disabled={loading || productsInCart.length === 0}
-              className="w-full mt-6 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-gray-400"
-            >
-              {loading ? "Processing..." : "Pay with Stripe"}
-            </button>
-          </>
-        )}
+        <button
+          onClick={handleCheckout}
+          disabled={loading}
+          className="w-full mt-8 bg-blue-600 text-white py-4 rounded-lg font-bold hover:bg-blue-700 disabled:bg-gray-400"
+        >
+          {loading ? "Loading..." : "Proceed to Payment"}
+        </button>
       </div>
     </div>
   );

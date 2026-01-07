@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { collection, query, where, orderBy, getDocs } from "firebase/firestore";
 import { db, auth } from "../firebase/config";
 import { onAuthStateChanged } from "firebase/auth";
+import toast from "react-hot-toast";
 
 type Order = {
   orderId: string;
@@ -19,6 +20,7 @@ const OrderHistory = () => {
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      toast.loading("Loading your orders...", { id: "loading-orders" });
       if (user) {
         try {
           const ordersRef = collection(db, "orders");

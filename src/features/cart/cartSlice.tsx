@@ -86,14 +86,18 @@ export const cartSlice = createSlice({
     },
 
     addProductToTheCart: (state, action: PayloadAction<ProductInCart>) => {
-      const product = state.productsInCart.find(
-        (product) => product.id === action.payload.id
+      const incomingId = action.payload.id || (action.payload as any)._id;
+      const productExists = state.productsInCart.find(
+        (product) => product.id === incomingId
       );
 
-      if (product) {
+      if (productExists) {
         return; // Don't add duplicates for one-of-a-kind items
       } else {
-        state.productsInCart.push(action.payload);
+        state.productsInCart.push({
+      ...action.payload,
+      id: typeof incomingId === 'object' ? incomingId.$oid : incomingId
+    });
       }
       cartSlice.caseReducers.calculateTotalPrice(state);
       saveCartToLocalStorage(state.productsInCart);

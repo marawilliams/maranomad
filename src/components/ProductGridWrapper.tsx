@@ -5,6 +5,7 @@ import {
   setShowingProducts,
   setTotalProducts,
 } from "../features/shop/shopSlice";
+import toast from "react-hot-toast";
 
 const STATUS_ORDER: Record<string, number> = {
   "for-sale": 1,
@@ -119,6 +120,7 @@ if (productFilters?.types && productFilters.types.length > 0) {
   );
 
   useEffect(() => {
+    toast.success("Products queried successfully!");
     getSearchedProducts(searchQuery || "", sortCriteria || "", page || 1, status, filters);
   }, [searchQuery, sortCriteria, page, status, filters, getSearchedProducts]);
 
