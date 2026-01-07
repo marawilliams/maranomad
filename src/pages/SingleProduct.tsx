@@ -33,6 +33,12 @@ const SingleProduct = () => {
     fetchProduct();
   }, [params.id]);
 
+  // Helper function to check if URL is a video
+  const isVideo = (url: string): boolean => {
+    const videoExtensions = ['.mp4', '.webm', '.ogg', '.mov'];
+    return videoExtensions.some(ext => url.toLowerCase().includes(ext));
+  };
+
   const handleAddToCart = () => {
     if (!singleProduct || singleProduct.status !== "for-sale") return;
 
@@ -42,7 +48,7 @@ const SingleProduct = () => {
         title: singleProduct.title,
         category: singleProduct.category,
         price: singleProduct.price,
-        quantity: 1, // Always 1 for one-of-a-kind items
+        quantity: 1,
         size: singleProduct.size,
         brand: singleProduct.brand,
         stock: singleProduct.stock,
@@ -68,31 +74,69 @@ const SingleProduct = () => {
   if (error || !singleProduct) return <p className="text-center mt-12">{error || "Product not found"}</p>;
 
   const isForSale = singleProduct.status === "for-sale";
+  const currentMedia = singleProduct.images[currentImageIndex];
+  const isCurrentMediaVideo = isVideo(currentMedia);
 
   return (
     <div className="max-w-screen-2xl mx-auto px-5 max-[400px]:px-3">
       <div className="grid grid-cols-3 gap-x-8 max-lg:grid-cols-1">
-        {/* Images slider */}
-        <div className="lg:col-span-2 relative w-full aspect-square flex items-center justify-center ">
+        {/* Media slider (images/videos) */}
+        <div className="mt-[5vh] lg:col-span-2 relative w-full h-[80vh] aspect-square flex items-center justify-center ">
           {singleProduct.images.length > 0 && (
             <>
-              <img
-                src={singleProduct.images[currentImageIndex]}
-                alt={`${singleProduct.title} ${currentImageIndex + 1}`}
-                className="w-full h-full object-contain"
-              />
-              <button
-                onClick={prevImage}
-                className="text-[#09140d] absolute left-2 top-1/2 -translate-y-1/2  p-2 hover:text-[#9e9f96]  transition-colors duration-500"
-              >
-                ◀
-              </button>
-              <button
-                onClick={nextImage}
-                className="text-[#09140d] absolute right-2 top-1/2 -translate-y-1/2  p-2 hover:text-[#9e9f96] transition-colors duration-500"
-              >
-                ▶
-              </button>
+              {isCurrentMediaVideo ? (
+                <video
+                  key={currentMedia}
+                  src={currentMedia}
+                  className="w-full h-full object-contain"
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                />
+              ) : (
+                <img
+                  src={currentMedia}
+                  alt={`${singleProduct.title} ${currentImageIndex + 1}`}
+                  className="w-full h-full object-contain"
+                />
+              )}
+              
+              {/* Navigation buttons - only show if more than one media item */}
+              {singleProduct.images.length > 1 && (
+                <>
+                  <button
+                    onClick={prevImage}
+                    className="text-[#09140d] absolute left-2 top-1/2 -translate-y-1/2 p-2 hover:text-[#9e9f96] transition-colors duration-500"
+                  >
+                    ◀
+                  </button>
+                  <button
+                    onClick={nextImage}
+                    className="text-[#09140d] absolute right-2 top-1/2 -translate-y-1/2 p-2 hover:text-[#9e9f96] transition-colors duration-500"
+                  >
+                    ▶
+                  </button>
+                </>
+              )}
+
+              {/* Media indicator dots */}
+              {singleProduct.images.length > 1 && (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  {singleProduct.images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-all ${
+                        index === currentImageIndex
+                          ? "bg-[#09140d] w-6"
+                          : "bg-gray-400"
+                      }`}
+                      aria-label={`Go to media ${index + 1}`}
+                    />
+                  ))}
+                </div>
+              )}
             </>
           )}
         </div>
@@ -109,15 +153,12 @@ const SingleProduct = () => {
             {singleProduct.status === "for-sale" && `$${singleProduct.price}`}
             {singleProduct.status === "sold" && "Sold"}
             {singleProduct.status === "not-for-sale" && "Not for sale"}
-
           </p>
           
-          {/* Display size */}
           <p className="text-base text-gray-700">
             <span className="font-semibold">size:</span> {singleProduct.size}
           </p>
           
-          {/* Display brand */}
           <p className="text-base text-gray-700">
             <span className="font-semibold">brand:</span> {singleProduct.brand}
           </p>
@@ -134,12 +175,12 @@ const SingleProduct = () => {
             onClick={handleAddToCart}
             disabled={!isForSale}
             style={
-    singleProduct.status !== "for-sale"
-      ? { pointerEvents: "none" } // disables hover & clicks visually
-      : {}}
+              singleProduct.status !== "for-sale"
+                ? { pointerEvents: "none" }
+                : {}
+            }
           />  
           
-          {/* Dropdowns */}
           <Dropdown dropdownTitle="Description">{singleProduct.description}</Dropdown>
         </div>
       </div>

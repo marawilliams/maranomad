@@ -5,7 +5,6 @@ import {
   setShowingProducts,
   setTotalProducts,
 } from "../features/shop/shopSlice";
-import toast from "react-hot-toast";
 
 const STATUS_ORDER: Record<string, number> = {
   "for-sale": 1,
@@ -40,7 +39,7 @@ const ProductGridWrapper = ({
 
   const getSearchedProducts = useCallback(
     async (query: string, sort: string, page: number, statusFilter?: string, productFilters?: { sizes: string[]; types: string[] }) => {
-      const response = await customFetch("/products");
+      const response = await customFetch.get("/products");
       let searchedProducts: Product[] = response.data;
 
       // 🔍 Search
