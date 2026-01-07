@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
-  userId: { type: String, required: true }, // Firebase UID
+  userId: { type: String, required: true },
 
   products: [
     {
@@ -14,7 +14,17 @@ const orderSchema = new mongoose.Schema({
   ],
 
   subtotal: { type: Number, required: true },
-  status: { type: String, default: "paid" },
+  status: { 
+    type: String, 
+    enum: ['paid', 'processing', 'shipped', 'delivered', 'cancelled'],
+    default: "paid" 
+  },
+
+  // Tracking fields
+  trackingNumber: String,
+  carrier: String,
+  trackingUrl: String,
+  shippedAt: Date,
 
   shippingAddress: {
     firstName: String,
@@ -31,10 +41,9 @@ const orderSchema = new mongoose.Schema({
   paymentIntentId: String,
   refundId: String,
 
-  // ✅ ADD THIS (SAFE TO STORE)
   paymentMethod: {
-    brand: String,    // visa, mastercard
-    last4: String,    // 4242
+    brand: String,
+    last4: String,
     expMonth: Number,
     expYear: Number,
   },

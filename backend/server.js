@@ -797,6 +797,11 @@ setInterval(async () => {
   }
 }, 60000); // Every minute
 
+const orderRoutes = require('./routes/orderRoutes'); // adjust path as needed
+
+// Mount the orders routes
+app.use('/api/orders', orderRoutes);
+
 const PORT = process.env.PORT || 5000;
 
 // ✅ Connect DB, then start server

@@ -22,7 +22,9 @@ import { loader as orderHistoryLoader } from "./pages/OrderHistory";
 import { loader as singleOrderLoader } from "./pages/SingleOrderHistory";
 import About, { aboutLoader } from "./pages/about";
 import Contact from "./pages/contact";
+import AdminOrders from './pages/AdminOrders';
 
+// Add route
 const router = createBrowserRouter([
   {
     path: "/",
@@ -35,6 +37,9 @@ const router = createBrowserRouter([
       {
         path: "shop",
         element: <Shop />,
+      },
+      {path: "/admin/orders",
+        element: <AdminOrders />,
       },
       {
         path: "shop/:category",
