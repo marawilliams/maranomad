@@ -27,6 +27,7 @@ const Checkout = () => {
   const shouldRelease = useRef(true);
   const productIdsRef = useRef<string[]>(productsInCart.map((p) => p.id));
   const reservationActive = useRef(!!reservationMade);
+  const shouldBlockNavigation = useRef(true);
   
   const TOTAL_TIME = 60 * 60 * 1000;
 
@@ -53,10 +54,10 @@ const Checkout = () => {
     }
   };
 
-  // Block all navigation attempts
+  // Block navigation attempts (unless shouldBlockNavigation is false)
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) => {
-      return currentLocation.pathname !== nextLocation.pathname;
+      return shouldBlockNavigation.current && currentLocation.pathname !== nextLocation.pathname;
     }
   );
 
@@ -82,10 +83,16 @@ const Checkout = () => {
     const updateTimer = () => {
       const remaining = expiresAt.getTime() - Date.now();
       if (remaining <= 0) {
-        shouldRelease.current = false;
-        reservationActive.current = false;
-        toast.error("Reservation expired!");
-        navigate("/cart");
+        // Disable blocking before navigation
+        shouldBlockNavigation.current = false;
+        shouldRelease.current = true;
+        reservationActive.current = true;
+        
+        // Release items and navigate
+        releaseItems("TimerExpired").then(() => {
+          toast.error("Reservation expired!");
+          navigate("/cart");
+        });
       } else {
         setTimeRemaining(remaining);
         setPercentRemaining((remaining / TOTAL_TIME) * 100);
@@ -99,6 +106,7 @@ const Checkout = () => {
 
   // Handle leaving - called when user confirms in blocker modal
   const handleConfirmLeave = async () => {
+    shouldBlockNavigation.current = false;
     await releaseItems("UserConfirmed");
     if (blocker.proceed) {
       blocker.proceed();
@@ -133,6 +141,7 @@ const Checkout = () => {
       });
 
       if (data.url) {
+        shouldBlockNavigation.current = false;
         shouldRelease.current = false;
         reservationActive.current = false;
         dispatch(clearCart());
@@ -200,8 +209,6 @@ const Checkout = () => {
       )}
 
       <div className="max-w-screen-2xl mx-auto px-5 py-8">
-
-
         <div className="text-sm font-eskool p-2 bg-[#13341E]/20 rounded-md p-4 mb-6 border border-[#13341E]/60">
           <div className="flex items-start">
             <svg 
@@ -220,7 +227,6 @@ const Checkout = () => {
           </div>
         </div>
 
-
         <div className="flex items-start items-center justify-between gap-6">
         <h1 className="font-eskool text-3xl text-[#13341E]font-bold mb-8">Checkout</h1>
 
@@ -236,8 +242,11 @@ const Checkout = () => {
                   <div className="flex items-start items-center justify-between gap-6 ">
                   <div className="w-full bg-black/10 rounded-full h-3 overflow-hidden">
                   <div
-                    className={`h-full ${colors.bar} transition-all duration-1000 ease-linear`}
-                    style={{ width: `${percentRemaining}%` }}
+                    className={`h-full ${colors.bar}`}
+                    style={{ 
+                      width: `${percentRemaining}%`,
+                      transition: 'width 0.3s ease-out'
+                    }}
                   />
                   </div>
                   <p className={` text-md text-right  ${colors.text} tabular-nums`} style={{ width: "5ch" }}>
