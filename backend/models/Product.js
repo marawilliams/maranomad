@@ -16,16 +16,16 @@ const productSchema = new mongoose.Schema({
     }
   },
   size: { type: String, required: true },
-  brand: {type: String},
+  brand: { type: String },
   stock: { type: Number, default: 0 },
   status: {
     type: String,
     enum: ["for-sale", "not-for-sale", "sold"],
     default: "not-for-sale",
   },
-  // --- NEW FIELDS ---
-  reservedBy: { type: String, default: null }, // Firebase UID of the user holding the item
-  reservedUntil: { type: Date, default: null }, // When the reservation expires
+  // ✅ NEW FIELDS FOR RESERVATION SYSTEM
+  reservedBy: { type: String, default: null }, // Stores the Firebase UID
+  reservedUntil: { type: Date, default: null }, // Stores the expiration timestamp
 });
 
 module.exports = mongoose.model("Product", productSchema, "products");

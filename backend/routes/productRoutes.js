@@ -158,5 +158,108 @@ router.post("/:id/reserve", async (req, res) => {
 });
 
 
+router.get("/availability", async (req, res) => {
+  try {
+    const { ids, uid } = req.query;
+    
+    if (!ids) return res.json({ unavailableIds: [] });
+
+    const idArray = ids.split(",");
+    const now = new Date();
+
+    // Logic: An item is unavailable if:
+    // 1. It is marked as "sold"
+    // 2. OR it is reserved by SOMEONE ELSE and the timer hasn't expired yet
+    const unavailableProducts = await Product.find({
+      _id: { $in: idArray },
+      $or: [
+        { status: "sold" },
+        {
+          reservedBy: { $ne: uid }, // Not me
+          reservedUntil: { $gt: now } // Timer is still running
+        }
+      ]
+    }).select("_id");
+
+    const unavailableIds = unavailableProducts.map(p => p._id.toString());
+    res.json({ unavailableIds });
+  } catch (err) {
+    console.error("Availability check error:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
+
+router.post("/:id/reserve", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { uid } = req.body; 
+
+    const product = await Product.findById(id);
+
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
+    }
+
+    if (product.status === "sold") {
+      return res.status(400).json({ error: true, message: "Product is already sold" });
+    }
+
+    const now = new Date();
+
+    // Check if reserved by ANOTHER user AND time hasn't expired
+    if (
+      product.reservedBy && 
+      product.reservedBy !== uid && 
+      product.reservedUntil && 
+      product.reservedUntil > now
+    ) {
+      return res.status(400).json({ 
+        error: true, 
+        message: "Item is currently being checked out by another customer." 
+      });
+    }
+
+    // ✅ Set 1 Hour Timer
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000);
+
+    product.reservedBy = uid;
+    product.reservedUntil = oneHourFromNow;
+    
+    await product.save();
+
+    res.json({ 
+      message: "Product reserved", 
+      reservedUntil: oneHourFromNow 
+    });
+
+  } catch (err) {
+    console.error("Reservation error:", err);
+    res.status(500).json({ message: "Server error during reservation" });
+  }
+});
+
+router.post("/release", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    if (!userId) return res.status(400).json({ message: "No User ID provided" });
+
+    // Find all products reserved by this user and clear the reservation
+    await Product.updateMany(
+      { reservedBy: userId },
+      { 
+        $set: { 
+          reservedBy: null, 
+          reservedUntil: null 
+        } 
+      }
+    );
+
+    res.json({ message: "Products released" });
+  } catch (err) {
+    console.error("Release error:", err);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 module.exports = router;
 
