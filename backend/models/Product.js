@@ -7,7 +7,7 @@ const productSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   category: { type: String, required: true },
   images: {
-    type: [String], // array of image URLs
+    type: [String],
     validate: {
       validator: function(v) {
         return v && v.length >= 1 && v.every(url => url && url.trim().length > 0);
@@ -15,14 +15,17 @@ const productSchema = new mongoose.Schema({
       message: "At least one valid image URL is required"
     }
   },
-  size: { type: String, required: true }, // e.g., "M", "L", "XS"
+  size: { type: String, required: true },
   brand: {type: String},
   stock: { type: Number, default: 0 },
   status: {
     type: String,
     enum: ["for-sale", "not-for-sale", "sold"],
     default: "not-for-sale",
-  }
+  },
+  // --- NEW FIELDS ---
+  reservedBy: { type: String, default: null }, // Firebase UID of the user holding the item
+  reservedUntil: { type: Date, default: null }, // When the reservation expires
 });
 
 module.exports = mongoose.model("Product", productSchema, "products");

@@ -14,18 +14,45 @@ interface User {
   email: string;
   name?: string;
   lastname?: string;
+  phone?: string;
   stripeCustomerId?: string;
 }
 
 interface Order {
   id: string;
+
   orderDate?: string;
   subtotal?: number;
-  orderStatus?: string;
-  data?: any;
-  products?: any[];
-  user?: any;
+  orderStatus?: 'paid' | 'processing' | 'shipped' | 'delivered' | 'refunded';
+
+  products?: {
+    productId: string;
+    title: string;
+    quantity: number;
+    price: number;
+    size?: string;
+  }[];
+
+  data?: {
+    firstName?: string;
+    lastName?: string;
+    address?: string;
+    apartment?: string;
+    city?: string;
+    region?: string;
+    postalCode?: string;
+    country?: string;
+    phone?: string;
+  };
+
+  paymentMethod?: {
+    brand?: string;
+    last4?: string;
+    expMonth?: number;
+    expYear?: number;
+  };
 }
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -35,32 +62,18 @@ const Login = () => {
   const [profile, setProfile] = useState<User | null>(null);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", lastname: "", email: "" });
-
+  const [editForm, setEditForm] = useState({
+    name: "",
+    lastname: "",
+    email: "",
+    phone: ""
+  });
   // Load user from localStorage on mount
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
     if (storedUser) {
       const parsed: User = JSON.parse(storedUser);
       setUser(parsed);
-
-      // Merge with remote user data if stripeCustomerId exists
-      (async () => {
-        try {
-          if (parsed.uid) {
-            const res = await customFetch.get(`/users/${parsed.uid}`);
-            const remote = res.data;
-            if (remote?.stripeCustomerId) {
-              const merged = { ...parsed, stripeCustomerId: remote.stripeCustomerId };
-              localStorage.setItem("user", JSON.stringify(merged));
-              setUser(merged);
-            }
-          }
-        } catch (err) {
-          console.warn("Failed to merge remote user data", err);
-        }
-      })();
-
       store.dispatch(setLoginStatus(true));
     }
   }, []);
@@ -72,7 +85,7 @@ const Login = () => {
       setLoadingOrders(true);
 
       try {
-        // Fetch profile
+        // Fetch profile from MongoDB
         const profileRes = await customFetch.get(`/users/${user.uid}`);
         const fetchedProfile = profileRes.data;
         setProfile(fetchedProfile);
@@ -82,9 +95,10 @@ const Login = () => {
           name: fetchedProfile.name || "",
           lastname: fetchedProfile.lastname || "",
           email: fetchedProfile.email || user.email,
+          phone: fetchedProfile.phone || ""
         });
 
-        // Fetch orders
+        // Fetch orders from MongoDB
         const ordersRes = await customFetch.get(`/orders/${user.uid}`);
         setOrders(ordersRes.data || []);
       } catch (err) {
@@ -143,11 +157,28 @@ const Login = () => {
     }
   };
 
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    if (!window.confirm("Are you sure you want to delete your account? This cannot be undone.")) return;
+
+    try {
+      await customFetch.delete(`/users/${user.uid}`);
+      toast.success("Account deleted successfully!");
+
+      // Log out user
+      await handleLogout();
+      navigate("/");
+    } catch (err: any) {
+      console.error("Failed to delete account:", err.response?.data || err.message);
+      toast.error("Failed to delete account");
+    }
+  };
+
   const handleForgotPassword = () => navigate("/forgot-password");
 
   return (
     <div className="max-w-screen-2xl mx-auto pt-24 flex items-center justify-center">
-      <div className="font-eskool text-[#3a3d1c] max-w-5xl mx-auto flex flex-col gap-5 max-sm:gap-3 items-center justify-center max-sm:px-5">
+      <div className="font-eskool text-[#3a3d1c] max-w-6xl mx-auto flex flex-col gap-5 max-sm:gap-3 items-center justify-center max-sm:px-5">
         <h2 className="text-5xl text-center mb-5 font-thin max-md:text-4xl max-sm:text-3xl max-[450px]:text-xl max-[450px]:font-normal">
           {user ? "You are already logged in!" : "Welcome Back! Login here:"}
         </h2>
@@ -156,12 +187,9 @@ const Login = () => {
           <div className="w-full max-w-3xl">
             <div className="mb-6">
               <h3 className="text-2xl font-semibold">Account</h3>
-              <p className="text-sm text-muted">
-                Signed in as <span className="font-medium">{user.email}</span>
-              </p>
             </div>
 
-            <section className="mb-6 bg-white/40 p-4 border rounded">
+            <section className=" mb-6 bg-white/40 p-4 border rounded">
               <div className="flex justify-between items-center mb-2">
                 <h4 className="font-semibold">Profile</h4>
                 <button
@@ -172,12 +200,13 @@ const Login = () => {
                         name: profile.name || "",
                         lastname: profile.lastname || "",
                         email: profile.email || user.email,
+                        phone: profile.phone || ""
                       });
                     }
                   }}
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-[#757933] hover:underline"
                 >
-                  {isEditing ? "Cancel" : "Edit"}
+                  {isEditing ? "cancel" : "edit"}
                 </button>
               </div>
 
@@ -188,11 +217,9 @@ const Login = () => {
                     if (!profile) return;
 
                     try {
-                      // Merge existing profile with edits to preserve required fields
-                      const updatedProfile = { ...profile, ...editForm };
-                      await customFetch.put(`/users/${user!.uid}`, updatedProfile);
+                      await customFetch.put(`/users/${user!.uid}`, editForm);
 
-                      setProfile(updatedProfile);
+                      setProfile({ ...profile, ...editForm });
                       setIsEditing(false);
                       toast.success("Profile updated successfully!");
                     } catch (err: any) {
@@ -204,7 +231,7 @@ const Login = () => {
                 >
                   <input
                     type="text"
-                    placeholder="First Name"
+                    placeholder="first name"
                     value={editForm.name}
                     onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                     className="w-full p-2 border rounded"
@@ -212,7 +239,7 @@ const Login = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Last Name"
+                    placeholder="last name"
                     value={editForm.lastname}
                     onChange={(e) => setEditForm({ ...editForm, lastname: e.target.value })}
                     className="w-full p-2 border rounded"
@@ -220,14 +247,21 @@ const Login = () => {
                   />
                   <input
                     type="email"
-                    placeholder="Email"
+                    placeholder="email"
                     value={editForm.email}
                     onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
                     className="w-full p-2 border rounded"
                     required
                   />
-                  <button type="submit" className="bg-brown text-white px-4 py-2 rounded">
-                    Save
+                  <input
+                    type="tel"
+                    placeholder="phone (optional)"
+                    value={editForm.phone}
+                    onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                    className="w-full p-2 border rounded"
+                  />
+                  <button type="submit" className="bg-[#6c6c29] hover:bg-[#5a5a22] text-white px-4 py-2 rounded-full">
+                    save
                   </button>
                 </form>
               ) : profile ? (
@@ -236,6 +270,7 @@ const Login = () => {
                     {profile.name} {profile.lastname}
                   </div>
                   <div>{profile.email}</div>
+                  {profile.phone && <div>{profile.phone}</div>}
                 </div>
               ) : (
                 <div className="text-sm">No profile data found.</div>
@@ -256,15 +291,15 @@ const Login = () => {
                         <div>
                           <div className="font-medium">Order #{order.id}</div>
                           <div className="text-sm text-muted">
-                            {formatDate(order.orderDate || order.data?.orderDate || new Date().toISOString())}
+                            {formatDate(order.orderDate || new Date().toISOString())}
                           </div>
                         </div>
                         <div className="text-right">
                           <div className="font-medium">
-                            ${(order.subtotal || 0) + 5 + ((order.subtotal || 0) / 5)}
+                            ${order.subtotal?.toFixed(2) || '0.00'}
                           </div>
                           <div className="text-sm">{order.orderStatus || "Pending"}</div>
-                          {order.orderStatus !== "Refunded" && (
+                          {order.orderStatus !== "refunded" && (
                             <button
                               onClick={async () => {
                                 if (confirm("Are you sure you want to request a refund?")) {
@@ -278,9 +313,9 @@ const Login = () => {
                                   }
                                 }
                               }}
-                              className="text-xs text-red-600 hover:underline mt-1"
+                              className="text-xs text-red-600/40 hover:underline mt-1"
                             >
-                              Request Refund
+                              request refund
                             </button>
                           )}
                         </div>
@@ -289,36 +324,50 @@ const Login = () => {
                       <div className="mt-3">
                         <div className="text-sm font-semibold mb-1">Items</div>
                         <ul className="text-sm list-disc list-inside">
-                          {order.products?.map((p) => (
-                            <li key={p.id}>
-                              {p.title} — {p.size} — qty {p.quantity} — ${p.price}
+                          {order.products?.map((p, idx) => (
+                            <li key={p.productId || idx}>
+                              {p.title} {p.size && `— ${p.size}`} — qty {p.quantity} — ${p.price}
                             </li>
                           ))}
                         </ul>
                       </div>
 
-                      <div className="mt-3 text-sm">
-                        <div className="font-semibold">Shipping Address</div>
-                        <div>
-                          {order.data?.firstName} {order.data?.lastName}
+                      {order.data && (
+                        <div className="mt-3 text-sm border-dashed border-b pb-2 border-black/50">
+                          <div className="font-semibold">Shipping Address</div>
+                          <div>
+                            {order.data.firstName} {order.data.lastName}
+                          </div>
+                          <div>
+                            {order.data.address} {order.data.apartment}
+                          </div>
+                          <div>
+                            {order.data.city} {order.data.region} {order.data.postalCode}
+                          </div>
+                          <div>{order.data.country}</div>
+                          {order.data.phone && <div>Phone: {order.data.phone}</div>}
                         </div>
-                        <div>
-                          {order.data?.address} {order.data?.apartment}
+                      )}
+                      {/*{order.paymentMethod && (
+                        <div className="text-sm mt-2 text-muted">
+                          Paid with {order.paymentMethod.brand?.toUpperCase()} •••• {order.paymentMethod.last4}
                         </div>
-                        <div>
-                          {order.data?.city}, {order.data?.region} {order.data?.postalCode}
-                        </div>
-                        <div>{order.data?.country}</div>
-                        <div>Phone: {order.data?.phone}</div>
-                      </div>
+                        )}*/}
+
                     </div>
                   ))}
                 </div>
               )}
             </section>
 
-            <div className="flex justify-end">
+            <div className="flex justify-between items-center mt-4">
               <Button text="Log Out" mode="brown" onClick={handleLogout} />
+              <button
+                onClick={handleDeleteAccount}
+                className="ml-10 text-black/20 px-4 py-2 rounded-full hover:text-black/40"
+              >
+                delete account
+              </button>
             </div>
           </div>
         ) : (
@@ -362,7 +411,7 @@ const Login = () => {
             </form>
 
             <div className="text-xl max-md:text-lg max-[450px]:text-sm mt-2">
-              don’t have an account?{" "}
+              don't have an account?{" "}
               <Link to="/register" className="text-secondaryBrown hover:underline">
                 register now
               </Link>

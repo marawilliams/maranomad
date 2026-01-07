@@ -37,16 +37,32 @@ interface User {
 }
 
 interface Order {
-  id: number;
+  id: string;                 // MongoDB _id
   orderStatus: string;
   orderDate: string;
-  data: {
-    email: string;
-  };
-  products: ProductInCart[];
   subtotal: number;
-  user: {
-    email: string;
-    id: number;
+
+  products: ProductInCart[];
+
+  // Shipping (what you already show as `data`)
+  data: {
+    firstName: string;
+    lastName: string;
+    address: string;
+    apartment?: string;
+    city: string;
+    region: string;
+    postalCode: string;
+    country: string;
+    phone?: string;
+  };
+
+  // ✅ NEW: Payment summary (safe)
+  paymentMethod?: {
+    brand: string;
+    last4: string;
+    expMonth?: number;
+    expYear?: number;
   };
 }
+

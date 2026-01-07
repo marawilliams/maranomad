@@ -2,19 +2,21 @@ const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
   userId: { type: String, required: true }, // Firebase UID
-  orderStatus: { type: String, default: "Pending" },
-  subtotal: { type: Number, required: true },
+
   products: [
     {
-      id: String,
+      productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
       title: String,
-      price: Number,
       quantity: Number,
+      price: Number,
       size: String,
-      brand: String
-    }
+    },
   ],
-  data: {
+
+  subtotal: { type: Number, required: true },
+  status: { type: String, default: "paid" },
+
+  shippingAddress: {
     firstName: String,
     lastName: String,
     address: String,
@@ -23,9 +25,21 @@ const orderSchema = new mongoose.Schema({
     region: String,
     postalCode: String,
     country: String,
-    phone: String
+    phone: String,
   },
-  createdAt: { type: Date, default: Date.now }
+
+  paymentIntentId: String,
+  refundId: String,
+
+  // ✅ ADD THIS (SAFE TO STORE)
+  paymentMethod: {
+    brand: String,    // visa, mastercard
+    last4: String,    // 4242
+    expMonth: Number,
+    expYear: Number,
+  },
+
+  createdAt: { type: Date, default: Date.now },
 });
 
 module.exports = mongoose.model("Order", orderSchema);

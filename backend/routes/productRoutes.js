@@ -137,5 +137,26 @@ router.post("/upload", upload ? upload.single("image") : (req, res, next) => nex
   }
 });
 
+// POST /api/products/:id/reserve
+router.post("/:id/reserve", async (req, res) => {
+  const { id } = req.params;
+  const { uid } = req.body; // logged-in user UID
+
+  const product = await Product.findById(id);
+
+  // Already reserved?
+  if (product.reservedBy && product.reservedBy !== uid) {
+    return res.status(400).json({ message: "Product is reserved by another user" });
+  }
+
+  product.reservedBy = uid;
+  product.reservedAt = new Date();
+
+  await product.save();
+
+  res.json({ message: "Product reserved" });
+});
+
+
 module.exports = router;
 
