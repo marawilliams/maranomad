@@ -446,7 +446,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
       },
       
       success_url: `${process.env.CLIENT_URL}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/checkout`, // ✅ Changed from /cart to /checkout
+      cancel_url: `${process.env.CLIENT_URL}/checkout?from=stripe_cancel`, // ✅ Changed from /cart to /checkout
       
       metadata: {
         userId: userId || "guest", // ✅ Handle guest users

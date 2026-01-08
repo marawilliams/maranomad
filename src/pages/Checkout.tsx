@@ -12,24 +12,57 @@ const Checkout = () => {
   const location = useLocation();
   const dispatch = useAppDispatch();
   const { productsInCart, subtotal } = useAppSelector((state) => state.cart);
-
   const passedExpiresAt = location.state?.expiresAt;
   const reservationMade = location.state?.reservationMade;
-  
   const [loading, setLoading] = useState(false);
-  const [expiresAt, setExpiresAt] = useState<Date | null>(
-    passedExpiresAt ? new Date(passedExpiresAt) : null
-  );
+  const [timerInitialized, setTimerInitialized] = useState(false);
 
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
-  const [percentRemaining, setPercentRemaining] = useState<number>(100);
+  // ✅ FIX: Initialize expiresAt with fallback to sessionStorage
+  const [expiresAt, setExpiresAt] = useState<Date | null>(() => {
+    if (passedExpiresAt) {
+      console.log("✅ Using passed expiresAt:", passedExpiresAt);
+      return new Date(passedExpiresAt);
+    }
+    // Try to restore from sessionStorage
+    const savedExpiresAt = sessionStorage.getItem('checkout_expiresAt');
+    if (savedExpiresAt) {
+      const restoredDate = new Date(savedExpiresAt);
+      if (restoredDate > new Date()) {
+        console.log("✅ Restored timer from sessionStorage:", savedExpiresAt);
+        return restoredDate;
+      } else {
+        console.log("⚠️ Saved timer expired, clearing");
+        sessionStorage.removeItem('checkout_expiresAt');
+      }
+    }
+    console.log("❌ No valid timer found");
+    return null;
+  });
 
+  // ✅ FIX: Initialize timeRemaining based on expiresAt
+  const [timeRemaining, setTimeRemaining] = useState(() => {
+    if (!expiresAt) return 0;
+    const remaining = new Date(expiresAt).getTime() - Date.now();
+    return remaining > 0 ? remaining : 0;
+  });
+
+  const [percentRemaining, setPercentRemaining] = useState(() => {
+    if (!expiresAt) return 100;
+    const remaining = new Date(expiresAt).getTime() - Date.now();
+    const TOTAL_TIME = 60 * 60 * 1000;
+    return remaining > 0 ? (remaining / TOTAL_TIME) * 100 : 0;
+  });
+  
+  // ✅ NEW: Track if we're in the process of redirecting to Stripe
+  const redirectingToStripe = useRef(false);
+  
+  // ✅ FIXED: These should always start as true if we have items
   const shouldRelease = useRef(true);
-  const productIdsRef = useRef<string[]>(productsInCart.map((p) => p.id));
-  const reservationActive = useRef(!!reservationMade);
+  const productIdsRef = useRef(productsInCart.map((p) => p.id));
+  const reservationActive = useRef(!!reservationMade || !!expiresAt);
   const shouldBlockNavigation = useRef(true);
   const beforeUnloadHandler = useRef<((e: BeforeUnloadEvent) => void) | null>(null);
-  
+
   const TOTAL_TIME = 60 * 60 * 1000;
 
   // Calculate totals
@@ -37,18 +70,77 @@ const Checkout = () => {
   const tax = subtotal / 5;
   const total = subtotal + shipping + tax;
 
+  // ✅ Save expiresAt to sessionStorage whenever it changes
+  useEffect(() => {
+    if (expiresAt) {
+      const isoString = expiresAt.toISOString();
+      sessionStorage.setItem('checkout_expiresAt', isoString);
+      console.log("💾 Saved timer to session:", isoString);
+      console.log("💾 All sessionStorage keys:", Object.keys(sessionStorage));
+      
+      // Immediately verify it was saved
+      const check = sessionStorage.getItem('checkout_expiresAt');
+      if (check !== isoString) {
+        console.error("❌ CRITICAL: Timer save verification failed!");
+        console.error("Expected:", isoString);
+        console.error("Got:", check);
+      } else {
+        console.log("✅ Timer save verified successfully");
+      }
+    } else {
+      console.warn("⚠️ expiresAt is null, not saving to sessionStorage");
+    }
+  }, [expiresAt]);
+
+  // ✅ NEW: Monitor sessionStorage for unexpected clears
+  useEffect(() => {
+    const checkTimer = setInterval(() => {
+      if (expiresAt && !redirectingToStripe.current) {
+        const stored = sessionStorage.getItem('checkout_expiresAt');
+        if (!stored) {
+          console.error("🚨 ALERT: Timer was removed from sessionStorage!");
+          console.error("🚨 Current expiresAt state:", expiresAt);
+          console.error("🚨 All sessionStorage keys:", Object.keys(sessionStorage));
+          // Try to restore it
+          sessionStorage.setItem('checkout_expiresAt', expiresAt.toISOString());
+          console.log("🔧 Attempted to restore timer");
+        }
+      }
+    }, 2000); // Check every 2 seconds
+
+    return () => clearInterval(checkTimer);
+  }, [expiresAt]);
+
+  // ✅ NEW: Log when component mounts
+  useEffect(() => {
+    console.log("🏁 Checkout component mounted");
+    console.log("🏁 location.state:", location.state);
+    console.log("🏁 passedExpiresAt:", passedExpiresAt);
+    console.log("🏁 reservationMade:", reservationMade);
+    console.log("🏁 Initial expiresAt state:", expiresAt);
+    console.log("🏁 All sessionStorage on mount:", Object.keys(sessionStorage));
+    console.log("🏁 checkout_expiresAt on mount:", sessionStorage.getItem('checkout_expiresAt'));
+  }, []);
+
   // Release function
   const releaseItems = async (source: string) => {
+    // ✅ FIXED: Don't release if we're redirecting to Stripe
+    if (redirectingToStripe.current) {
+      console.log(`⏭️ [${source}] Skipping release - redirecting to Stripe`);
+      return;
+    }
+
     if (shouldRelease.current && reservationActive.current) {
       console.log(`🚀 [${source}] Releasing reservation`);
       reservationActive.current = false;
-
+      
       try {
         await customFetch.post("/release-reservations", {
           productIds: productIdsRef.current,
           userId: auth.currentUser?.uid || "guest",
         });
         console.log(`✅ [${source}] Released successfully`);
+        sessionStorage.removeItem('checkout_expiresAt');
       } catch (err) {
         console.error(`❌ [${source}] Release failed:`, err);
       }
@@ -58,40 +150,133 @@ const Checkout = () => {
   // Block navigation attempts (unless shouldBlockNavigation is false)
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) => {
-      return shouldBlockNavigation.current && currentLocation.pathname !== nextLocation.pathname;
+      return (
+        shouldBlockNavigation.current &&
+        currentLocation.pathname !== nextLocation.pathname
+      );
     }
   );
 
   // Handle browser refresh, back button, close tab
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!shouldBlockNavigation.current) {
+      if (!shouldBlockNavigation.current || redirectingToStripe.current) {
         return;
       }
       e.preventDefault();
       e.returnValue = "";
       return "";
     };
-    
+
     beforeUnloadHandler.current = handleBeforeUnload;
     window.addEventListener("beforeunload", handleBeforeUnload);
-    
+
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
     };
   }, []);
 
-  // Timer
+  // ✅ NEW: Check if we're returning from Stripe cancel
   useEffect(() => {
-    if (!expiresAt) return;
+    console.log("🔍 Checking for Stripe return...");
+    console.log("🔍 All sessionStorage keys:", Object.keys(sessionStorage));
+    console.log("🔍 checkout_expiresAt value:", sessionStorage.getItem('checkout_expiresAt'));
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const fromStripeCancel = urlParams.get('from') === 'stripe_cancel';
+    
+    console.log("🔍 URL params:", window.location.search);
+    console.log("🔍 fromStripeCancel:", fromStripeCancel);
+    
+    if (fromStripeCancel) {
+      console.log("🔙 Returned from Stripe cancel");
+      
+      // Check if we have a valid timer
+      const savedTimer = sessionStorage.getItem('checkout_expiresAt');
+      console.log("🔍 savedTimer from sessionStorage:", savedTimer);
+      
+      if (savedTimer) {
+        const restoredDate = new Date(savedTimer);
+        const now = new Date();
+        console.log("🔍 restoredDate:", restoredDate);
+        console.log("🔍 now:", now);
+        console.log("🔍 isValid:", restoredDate > now);
+        
+        if (restoredDate > now) {
+          console.log("✅ Timer still valid, restoring:", savedTimer);
+          setExpiresAt(restoredDate);
+          
+          // Calculate initial time remaining
+          const remaining = restoredDate.getTime() - Date.now();
+          setTimeRemaining(remaining);
+          setPercentRemaining((remaining / TOTAL_TIME) * 100);
+        } else {
+          console.log("⚠️ Timer expired while at Stripe");
+          toast.error("Your reservation expired. Please add items again.");
+          sessionStorage.removeItem('checkout_expiresAt');
+          navigate("/cart");
+          return;
+        }
+      } else {
+        console.log("⚠️ No timer found after returning from Stripe");
+        console.log("⚠️ This means sessionStorage was cleared or timer wasn't saved");
+        toast.error("Session lost. Please try again.");
+        navigate("/cart");
+        return;
+      }
+      
+      // Clear the URL parameter
+      window.history.replaceState({}, '', '/checkout');
+      
+      // Reset the redirecting flag
+      redirectingToStripe.current = false;
+      
+      // Re-enable all protections
+      shouldBlockNavigation.current = true;
+      shouldRelease.current = true;
+      reservationActive.current = true;
+      
+      // Re-add beforeunload handler
+      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (!shouldBlockNavigation.current || redirectingToStripe.current) {
+          return;
+        }
+        e.preventDefault();
+        e.returnValue = "";
+        return "";
+      };
+      beforeUnloadHandler.current = handleBeforeUnload;
+      window.addEventListener("beforeunload", handleBeforeUnload);
+      
+      setTimerInitialized(true);
+    } else {
+      // Normal load (not from Stripe)
+      console.log("✅ Normal checkout load (not from Stripe)");
+      setTimerInitialized(true);
+    }
+  }, [navigate]);
+
+  // Timer effect
+  useEffect(() => {
+    if (!expiresAt) {
+      console.log("⚠️ No expiresAt, timer not running");
+      return;
+    }
+
+    console.log("⏰ Starting timer with expiresAt:", expiresAt);
 
     const updateTimer = () => {
-      const remaining = expiresAt.getTime() - Date.now();
+      const now = Date.now();
+      const expiresAtTime = expiresAt.getTime();
+      const remaining = expiresAtTime - now;
+      
+      console.log("⏱ Timer tick - Remaining:", remaining, "ms");
+
       if (remaining <= 0) {
+        console.log("⏰ Timer expired!");
         shouldBlockNavigation.current = false;
         shouldRelease.current = true;
         reservationActive.current = true;
-        
         releaseItems("TimerExpired").then(() => {
           toast.error("Reservation expired!");
           navigate("/cart");
@@ -104,6 +289,7 @@ const Checkout = () => {
 
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
+
     return () => clearInterval(interval);
   }, [expiresAt, navigate]);
 
@@ -117,77 +303,92 @@ const Checkout = () => {
   };
 
   const handleCheckout = async () => {
-  if (productsInCart.length === 0) {
-    toast.error("Your cart is empty");
-    return;
-  }
+    if (productsInCart.length === 0) {
+      toast.error("Your cart is empty");
+      return;
+    }
 
-  // ✅ DON'T disable these until redirect actually happens
-  // Just remove the beforeunload listener
-  if (beforeUnloadHandler.current) {
-    window.removeEventListener("beforeunload", beforeUnloadHandler.current);
-  }
-  
-  setLoading(true);
-
-  try {
-    const { data } = await customFetch.post("/create-checkout-session", {
-      items: productsInCart.map((item) => ({
-        id: item.id,
-        title: item.title,
-        price: item.price,
-        quantity: item.quantity ?? 1,
-        size: item.size ?? "",
-        brand: item.brand ?? "",
-      })),
-      userId: auth.currentUser?.uid || null,
-    });
-
-    if (data.url) {
-      // ✅ Disable these RIGHT before redirect
-      shouldBlockNavigation.current = false;
-      shouldRelease.current = false;
-      reservationActive.current = false;
+    // ✅ IMPORTANT: Force save timer to sessionStorage before redirect
+    if (expiresAt) {
+      const timerValue = expiresAt.toISOString();
+      sessionStorage.setItem('checkout_expiresAt', timerValue);
+      console.log("🔒 FORCE SAVED timer before Stripe redirect:", timerValue);
       
-      // Redirect immediately
-      window.location.href = data.url;
-    }
-  } catch (error: any) {
-    // Re-add beforeunload listener if checkout fails
-    if (beforeUnloadHandler.current) {
-      window.addEventListener("beforeunload", beforeUnloadHandler.current);
-    }
-    
-    toast.error(error.response?.data?.error || "Checkout failed. Please try again.");
-    setLoading(false);
-  }
-};
-
-  // Re-enable blocking if user comes back from Stripe
-useEffect(() => {
-  // Check if we're returning from Stripe (no location state but cart has items)
-  const isReturningFromStripe = !location.state?.reservationMade && productsInCart.length > 0;
-  
-  if (isReturningFromStripe) {
-    console.log("👈 User returned from Stripe, re-enabling page protections");
-    shouldBlockNavigation.current = true;
-    shouldRelease.current = true;
-    reservationActive.current = true;
-    
-    // Re-add beforeunload handler
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!shouldBlockNavigation.current) {
+      // Verify it was saved
+      const verified = sessionStorage.getItem('checkout_expiresAt');
+      console.log("🔍 VERIFIED timer in storage:", verified);
+      
+      if (!verified) {
+        console.error("❌ CRITICAL: Timer failed to save to sessionStorage!");
+        toast.error("Failed to save session. Please try again.");
         return;
       }
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    };
+    } else {
+      console.warn("⚠️ WARNING: No expiresAt to save before redirect!");
+    }
+
+    // ✅ Set the redirecting flag FIRST
+    redirectingToStripe.current = true;
     
-    beforeUnloadHandler.current = handleBeforeUnload;
-    window.addEventListener("beforeunload", handleBeforeUnload);
-  }
-}, [location.state, productsInCart.length]);
+    // Remove the beforeunload listener
+    if (beforeUnloadHandler.current) {
+      window.removeEventListener("beforeunload", beforeUnloadHandler.current);
+    }
+
+    setLoading(true);
+
+    try {
+      const { data } = await customFetch.post("/create-checkout-session", {
+        items: productsInCart.map((item) => ({
+          id: item.id,
+          title: item.title,
+          price: item.price,
+          quantity: item.quantity ?? 1,
+          size: item.size ?? "",
+          brand: item.brand ?? "",
+        })),
+        userId: auth.currentUser?.uid || null,
+      });
+
+      if (data.url) {
+        // ✅ Disable blocking for navigation
+        shouldBlockNavigation.current = false;
+        
+        // Double-check timer is still in storage
+        const finalCheck = sessionStorage.getItem('checkout_expiresAt');
+        console.log("🔄 Final check before redirect - Timer in storage:", finalCheck);
+        
+        console.log("🔄 Redirecting to Stripe now...");
+        
+        // Redirect immediately
+        window.location.href = data.url;
+      }
+    } catch (error: any) {
+      // ✅ Reset the flag if checkout fails
+      redirectingToStripe.current = false;
+      
+      // Re-add beforeunload listener if checkout fails
+      if (beforeUnloadHandler.current) {
+        window.addEventListener("beforeunload", beforeUnloadHandler.current);
+      }
+      
+      toast.error(
+        error.response?.data?.error || "Checkout failed. Please try again."
+      );
+      setLoading(false);
+    }
+  };
+
+  // ✅ NEW: Handle component unmount (when leaving checkout page)
+  useEffect(() => {
+    return () => {
+      // Only release if NOT redirecting to Stripe
+      if (!redirectingToStripe.current && reservationActive.current) {
+        console.log("🚪 Component unmounting - releasing items");
+        releaseItems("ComponentUnmount");
+      }
+    };
+  }, []);
 
   const formatTime = (ms: number) => {
     const min = Math.floor(ms / 60000);
@@ -196,9 +397,11 @@ useEffect(() => {
   };
 
   const getColor = () => {
-    if (percentRemaining > 50) return {bar: "bg-[#13341E]/70", text: "text-[#13341E]" };
-    if (percentRemaining > 25) return {bar: "bg-[#eb9c35]/70", text: "text-[#eb9c35]" };
-    return {bar: "bg-[#8a2b13]/70", text: "text-[#8a2b13]" };
+    if (percentRemaining > 50)
+      return { bar: "bg-[#13341E]/70", text: "text-[#13341E]" };
+    if (percentRemaining > 25)
+      return { bar: "bg-[#eb9c35]/70", text: "text-[#eb9c35]" };
+    return { bar: "bg-[#8a2b13]/70", text: "text-[#8a2b13]" };
   };
 
   const colors = getColor();
@@ -206,34 +409,46 @@ useEffect(() => {
   // If no reservation, return null or redirect
   if (productsInCart.length === 0) {
     return (
-      <div className="max-w-screen-2xl mx-auto px-5 py-24 text-center">
-        <div className="font-eskool text-[#3a3d1c]">
-          <h2 className="text-3xl mb-4">Your cart is empty</h2>
-        
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <h2 className="text-2xl font-bold mb-4">Your cart is empty</h2>
+        <Link
+          to="/shop"
+          className="bg-[#13341E] text-white px-6 py-3 rounded-lg hover:bg-[#13341E]/80"
+        >
+          Continue Shopping
+        </Link>
+      </div>
+    );
+  }
+
+  // Show loading state while timer initializes
+  if (!timerInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#13341E] mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading checkout...</p>
         </div>
       </div>
     );
   }
+
   return (
     <>
       {/* Navigation Blocker Modal */}
-      {blocker.state === 'blocked' && (
-        <div className="font-eskool fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6 shadow-xl">
-            <div className="flex items-center mb-4">
-              <h2 className="text-2xl font-bold text-gray-900">!!! Leave Checkout?</h2>
-            </div>
-            
-            <p className="text-gray-700 mb-6">
-              Are you sure you want to leave? Your reservation will be released and these items will become available to other shoppers.
+      {blocker.state === "blocked" && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4 text-[#8a2b13]">
+              ⚠️ Leave Checkout?
+            </h2>
+            <p className="mb-4">
+              Are you sure you want to leave? Your reservation will be released
+              and these items will become available to other shoppers.
             </p>
-
-            <div className="bg-red-50 border border-red-200 rounded p-3 mb-6">
-              <p className="text-sm text-red-800 font-semibold">
-                ⏱ You have {formatTime(timeRemaining)} remaining
-              </p>
-            </div>
-
+            <p className="mb-6 text-sm text-gray-600">
+              ⏱ You have {formatTime(timeRemaining)} remaining
+            </p>
             <div className="flex gap-3">
               <button
                 onClick={() => blocker.reset()}
@@ -252,149 +467,104 @@ useEffect(() => {
         </div>
       )}
 
-      <div className="max-w-screen-2xl mx-auto px-5 py-8">
-        <div className="text-sm font-eskool p-2 bg-[#13341E]/20 rounded-md p-4 mb-6 border border-[#13341E]/60">
-          <div className="flex items-start">
-            <svg 
-            className="inline-block w-[3em] h-[3em] mx-1 fill-current text-[#13341E]/70 align-middle -translate-x-[0.5em] -translate-y-[0.2em]"
-            viewBox="0 0 600 579"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path transform="translate(0,579) scale(0.1,-0.1)" d="M2846 5755 c-11 -8 -27 -15 -36 -15 -20 0 -80 -55 -80 -73 0 -8 -12 -36 -26 -61 -15 -26 -24 -50 -21 -53 3 -3 -2 -28 -13 -57 -30 -82 -70 -218 -70 -236 0 -9 -4 -20 -8 -26 -5 -5 -14 -34 -21 -64 -7 -30 -19 -65 -27 -77 -8 -12 -14 -32 -14 -43 0 -11 -4 -28 -10 -38 -5 -9 -16 -48 -26 -87 -9 -38 -20 -75 -25 -81 -5 -6 -10 -30 -12 -52 -1 -23 -6 -44 -10 -48 -4 -4 -7 -15 -7 -25 0 -16 -24 -104 -40 -144 -4 -11 -14 -47 -21 -80 -7 -33 -18 -71 -25 -85 -6 -14 -17 -52 -24 -85 -6 -33 -16 -68 -21 -77 -5 -10 -9 -29 -9 -42 0 -13 -7 -37 -15 -52 -8 -16 -15 -39 -15 -51 0 -12 -6 -37 -14 -55 -8 -18 -27 -76 -41 -128 -14 -52 -31 -100 -37 -108 -21 -25 -89 -53 -141 -58 -29 -3 -63 -10 -77 -14 -14 -5 -43 -12 -65 -15 -22 -3 -56 -10 -75 -15 -87 -22 -337 -47 -565 -56 -71 -3 -148 -9 -170 -15 -22 -6 -112 -19 -200 -29 -88 -10 -180 -23 -205 -29 -93 -20 -207 -43 -257 -51 -28 -4 -57 -11 -63 -15 -6 -4 -60 -7 -119 -6 l-108 1 -51 -48 c-44 -40 -53 -54 -60 -99 -8 -46 -6 -71 14 -180 6 -32 70 -69 131 -78 61 -8 203 -92 289 -170 55 -50 67 -59 124 -93 30 -18 69 -47 85 -63 32 -32 129 -99 143 -99 5 0 21 -11 35 -24 14 -13 71 -47 126 -74 54 -27 114 -61 132 -75 19 -13 54 -35 79 -47 25 -12 74 -43 109 -67 36 -25 75 -49 88 -54 13 -5 23 -13 23 -18 0 -5 25 -22 56 -37 32 -15 69 -37 83 -49 14 -11 43 -29 64 -40 51 -26 117 -83 117 -100 0 -8 12 -26 26 -42 24 -26 25 -32 19 -98 -3 -38 -10 -93 -16 -120 -5 -28 -11 -66 -13 -85 -7 -55 -56 -283 -66 -305 -6 -11 -9 -29 -9 -40 0 -11 -6 -60 -15 -110 -8 -49 -18 -114 -21 -143 -4 -29 -13 -76 -21 -105 -8 -29 -19 -89 -24 -134 -4 -45 -13 -97 -18 -115 -6 -18 -13 -69 -17 -113 -3 -44 -15 -136 -26 -205 -11 -69 -23 -145 -26 -170 -3 -25 -14 -57 -24 -72 -11 -14 -19 -39 -19 -54 0 -42 37 -109 77 -140 30 -23 45 -27 102 -27 86 -1 134 18 191 74 26 26 58 50 71 54 24 8 169 145 169 162 1 4 43 42 94 83 52 41 98 82 102 91 11 19 163 154 220 195 91 64 140 101 190 144 29 25 76 63 105 85 29 22 92 75 140 118 48 42 92 77 97 77 5 0 15 13 22 30 17 41 55 63 94 56 17 -4 43 -6 57 -6 15 0 32 -7 39 -15 7 -8 17 -15 22 -15 5 0 35 -18 65 -40 31 -22 61 -40 67 -40 7 0 26 -13 44 -29 17 -16 40 -32 51 -36 11 -3 25 -12 31 -20 7 -8 22 -15 34 -15 12 0 35 -13 51 -30 16 -16 33 -30 38 -30 5 0 26 -13 46 -28 20 -16 43 -31 52 -35 10 -3 48 -28 86 -55 38 -27 91 -62 118 -77 27 -15 54 -33 60 -40 5 -8 24 -22 42 -32 17 -10 57 -34 89 -53 31 -19 65 -40 75 -46 11 -6 27 -17 36 -25 16 -13 39 -25 83 -43 50 -21 177 -106 186 -125 7 -13 41 -39 75 -59 53 -29 74 -35 124 -35 38 -1 69 5 85 15 14 9 37 18 52 22 48 11 85 61 91 125 3 31 9 72 12 91 5 28 1 43 -19 73 -14 21 -26 45 -26 54 0 9 -7 24 -16 34 -8 9 -22 47 -29 84 -8 37 -18 72 -23 79 -5 6 -12 25 -15 41 -15 77 -39 171 -57 223 -11 31 -22 71 -24 87 -6 41 -53 235 -76 315 -22 75 -43 172 -60 280 -7 41 -17 90 -22 109 -6 18 -11 80 -11 137 0 82 3 108 16 122 10 10 13 23 8 31 -9 13 20 85 39 96 6 4 21 23 34 43 13 21 61 75 107 120 373 371 651 642 658 642 6 0 13 9 16 21 4 11 22 27 41 35 19 8 34 19 34 24 0 6 7 10 15 10 9 0 27 11 40 24 12 13 39 33 59 45 20 12 44 33 55 47 10 13 23 24 27 24 5 1 27 19 49 40 22 22 55 47 75 57 35 19 66 50 104 106 18 26 22 45 20 92 -4 82 -9 102 -41 147 -33 48 -48 57 -124 69 -53 8 -66 7 -122 -15 -34 -14 -80 -25 -102 -25 -22 0 -310 -2 -640 -4 -330 -2 -640 -7 -690 -11 -121 -9 -278 19 -283 51 -2 11 -14 31 -28 44 -13 12 -24 28 -24 35 0 6 -7 18 -16 25 -9 7 -20 22 -25 34 -14 29 -33 61 -48 78 -7 9 -10 21 -7 26 4 6 -2 15 -12 20 -11 6 -22 23 -25 39 -3 16 -21 49 -40 74 -19 25 -40 61 -46 80 -6 20 -21 44 -31 53 -11 10 -20 24 -20 30 0 7 -20 49 -45 94 -25 45 -45 84 -45 87 0 6 -70 156 -102 219 -98 193 -128 253 -128 258 0 3 -18 45 -41 94 -23 48 -55 117 -71 153 -16 36 -47 100 -69 142 -48 96 -73 165 -70 201 1 15 -3 27 -9 27 -5 0 -10 15 -10 34 0 41 -31 83 -68 90 -80 15 -108 15 -126 1z"/>
-          </svg>
-            <div>
-              <p className="font-bold text-[#13341E]/70 ">don't leave this page!</p>
-              <p className="text-sm text-[#13341E]/50">
-                If you leave, refresh, or close this page, your reservation will be released.
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+          <p className="text-yellow-800 font-semibold">
+            ⚠️ don't leave this page!
+          </p>
+          <p className="text-yellow-700 text-sm">
+            If you leave, refresh, or close this page, your reservation will be
+            released.
+          </p>
+        </div>
+
+        <h1 className="text-3xl font-bold mb-6">Checkout</h1>
+
+        {/* Timer */}
+        {expiresAt && (
+          <div className="mb-6 p-4 bg-white rounded-lg shadow">
+            <p className="text-sm text-gray-600 mb-2 uppercase tracking-wide">
+              time remaining on your reservation
+            </p>
+            <div className="flex items-center gap-4">
+              <div className="flex-1 bg-gray-200 rounded-full h-3 overflow-hidden">
+                <div
+                  className={`h-full ${colors.bar} transition-all duration-1000`}
+                  style={{ width: `${percentRemaining}%` }}
+                />
+              </div>
+              <p className={`text-2xl font-bold ${colors.text} min-w-[80px]`}>
+                {timeRemaining > 0 ? formatTime(timeRemaining) : "0:00"}
               </p>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-start items-center justify-between gap-6">
-        <h1 className="font-eskool text-3xl text-[#13341E]font-bold mb-8">Checkout</h1>
-
-        {/* Timer */}
-        {expiresAt && timeRemaining > 0 && (
-          <div className={`font-eskool px-4 py-4 rounded-lg mb-6`}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center">
-                <div>
-                  <p className={`text-sm text-[#13341E]`}>
-                    time remaining on your reservation
-                  </p>
-                  <div className="flex items-start items-center justify-between gap-6 ">
-                  <div className="w-full bg-black/10 rounded-full h-3 overflow-hidden">
-                  <div
-                    className={`h-full ${colors.bar}`}
-                    style={{ 
-                      width: `${percentRemaining}%`,
-                      transition: 'width 0.3s ease-out'
-                    }}
-                  />
-                  </div>
-                  <p className={` text-md text-right  ${colors.text} tabular-nums`} style={{ width: "5ch" }}>
-                    {formatTime(timeRemaining)} 
-                  </p>
-                  </div>
-                </div>
-              </div>
-              <div className={`text-right ${colors.text}`}>
-              </div>
-            </div>
-          </div>
         )}
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="bg-white rounded-lg shadow p-6">
           {/* Order Summary */}
-          <div className="bg-white/50 p-6 rounded-lg">
-            <h2 className="font-nightly text-3xl font-light mb-4">order summary</h2>
-            
-            <div className="font-eskool space-y-3">
-              {productsInCart.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-2 border-b border-[#3a3d1c]/20">
-                  <div className="flex items-center gap-3">
-                    <img 
-                      src={item.images?.[0]} 
-                      alt={item.title}
-                      className="w-16 h-16 object-cover rounded"
-                    />
-                    <div>
-                        <Link
-                          to={`/product/${item.id}`}
-                          className="hover:underline hover:text-[#13341E]/60"
-                        >
-                          {item.title}
-                        </Link>
-                      {item.size && <p className="text-sm text-gray-600">Size: {item.size}</p>}
-                      <p className="text-sm text-gray-600">Qty: {item.quantity || 1}</p>
-                    </div>
-                  </div>
-                  <span className="text-[#13341E]/50">${(item.price * (item.quantity || 1)).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
+          <h2 className="text-xl font-semibold mb-4">order summary</h2>
 
-            <div className="font-eskool mt-6 space-y-4">
-              <div className="flex justify-between border-b border-[#3a3d1c]/20 pb-2">
-                <span>Subtotal:</span>
-                <span>${subtotal.toFixed(2)}</span>
+          <div className="space-y-4 mb-6">
+            {productsInCart.map((item) => (
+              <div key={item.id} className="flex gap-4 pb-4 border-b">
+                <img
+                  src={item.images[0]}
+                  alt={item.title}
+                  className="w-20 h-20 object-cover rounded"
+                />
+                <div className="flex-1">
+                  <h3 className="font-semibold">{item.title}</h3>
+                  {item.size && (
+                    <p className="text-sm text-gray-600">Size: {item.size}</p>
+                  )}
+                  <p className="text-sm text-gray-600">
+                    Qty: {item.quantity || 1}
+                  </p>
+                </div>
+                <p className="font-semibold">
+                  ${(item.price * (item.quantity || 1)).toFixed(2)}
+                </p>
               </div>
-              <div className="flex justify-between border-b border-[#3a3d1c]/20 pb-2">
-                <span>Shipping:</span>
-                <span>${shipping.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between border-b border-[#3a3d1c]/20 pb-2">
-                <span>Tax:</span>
-                <span>${tax.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-lg text-[#3a3d1c]/80 pt-2 border-t-2 border-[#3a3d1c]">
-                <span>Total:</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
+            ))}
+          </div>
+
+          <div className="space-y-2 mb-6">
+            <div className="flex justify-between">
+              <span>Subtotal:</span>
+              <span>${subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Shipping:</span>
+              <span>${shipping.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Tax:</span>
+              <span>${tax.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-lg pt-2 border-t">
+              <span>Total:</span>
+              <span>${total.toFixed(2)}</span>
             </div>
           </div>
 
           {/* Payment Section */}
-          <div className="font-eskool bg-white/50 p-6 rounded-lg">
+          <div className="border-t pt-6">
             <h2 className="text-xl font-semibold mb-4">Payment</h2>
-            
-            <div className="mb-6">
-              <p className="text-gray-600 mb-4">
-                You will be redirected to Stripe's secure payment page to complete your purchase.
-              </p>
-
-              <div className="bg-[#635BFF]/5 p-4 rounded-lg mb-4">
-                <div className="flex items-center gap-3">
-                    <p className="text-sm text-[#635BFF]">
-                      Secure payment powered by{" "}
-                      <a
-                        href="https://stripe.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-semibold underline hover:text-blue-600"
-                      >
-                        Stripe
-                      </a>
-                    </p>
-
-                    <img
-                      src="../../src/assets/stripe.jpeg"
-                      alt="Stripe"
-                      className="w-10"
-                    />
-                  </div>
-
-              </div>
-            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              You will be redirected to Stripe's secure payment page to complete
+              your purchase.
+            </p>
+            <p className="text-xs text-gray-500 mb-4">
+              Secure payment powered by{" "}
+              <span className="font-semibold">Stripe</span>
+            </p>
 
             <button
               onClick={handleCheckout}
-              disabled={loading || productsInCart.length === 0}
-              className="w-full bg-[#635BFF] text-white py-4 rounded-lg hover:bg-[#0A2540] disabled:bg-gray-400 disabled:opacity-50 text-lg  transition-colors shadow-lg"
+              disabled={loading}
+              className="w-full bg-[#13341E] text-white py-4 rounded-lg font-semibold hover:bg-[#13341E]/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Processing...' : `Pay $${total.toFixed(2)}`}
+              {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
             </button>
 
             <p className="text-xs text-gray-500 mt-4 text-center">
