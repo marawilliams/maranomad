@@ -209,9 +209,7 @@ useEffect(() => {
       <div className="max-w-screen-2xl mx-auto px-5 py-24 text-center">
         <div className="font-eskool text-[#3a3d1c]">
           <h2 className="text-3xl mb-4">Your cart is empty</h2>
-          <Link to="/shop" className="inline-block bg-[#3a3d1c] text-white px-6 py-3 rounded-lg">
-            Continue Shopping
-          </Link>
+        
         </div>
       </div>
     );
