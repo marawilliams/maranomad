@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import toast from "react-hot-toast";
 import { Link, useLoaderData, useNavigate } from "react-router-dom";
 import customFetch from "../axios/custom";
 import { formatDate } from "../utils/formatDate";
@@ -23,7 +22,7 @@ const OrderHistory = () => {
 
   useEffect(() => {
     if (!user?.id) {
-      toast.error("Please login to view this page");
+      //toast.error("Please login to view this page");
       navigate("/login");
     }
   }, [user, navigate]);
@@ -43,26 +42,36 @@ const OrderHistory = () => {
             </tr>
           </thead>
           <tbody>
-            {orders.map((order) => order?.user && order.user.id === user.id && (
-              <tr key={order.id}>
-                <td className="py-3 px-4 border-b text-center">{order.id}</td>
-                <td className="py-3 px-4 border-b text-center">{ formatDate(order.orderDate) }</td>
-                <td className="py-3 px-4 border-b text-center">
-                  ${order.subtotal + 5 + (order.subtotal / 5)}
-                </td>
-                <td className="py-3 px-4 border-b text-center">
-                  { order.orderStatus }
-                </td>
-                <td className="py-3 px-4 border-b text-center">
-                  <Link
-                    to={`/order-history/${order.id}`}
-                    className="text-blue-500 hover:underline"
-                  >
-                    View Details
-                  </Link>
-                </td>
-              </tr>
-            ))}
+            {orders
+              .filter((order) => order.userId === user.id)
+              .map((order) => (
+                <tr key={order._id}>
+                  <td className="py-3 px-4 border-b text-center">
+                    {order._id}
+                  </td>
+
+                  <td className="py-3 px-4 border-b text-center">
+                    {formatDate(order.createdAt)}
+                  </td>
+
+                  <td className="py-3 px-4 border-b text-center">
+                    ${(order.subtotal + 5 + order.subtotal / 5).toFixed(2)}
+                  </td>
+
+                  <td className="py-3 px-4 border-b text-center">
+                    {order.status}
+                  </td>
+
+                  <td className="py-3 px-4 border-b text-center">
+                    <Link
+                      to={`/order-history/${order._id}`}
+                      className="text-blue-500 hover:underline"
+                    >
+                      View Details
+                    </Link>
+                  </td>
+                </tr>
+              ))}
           </tbody>
         </table>
       </div>
