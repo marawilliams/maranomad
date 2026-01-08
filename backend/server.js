@@ -255,6 +255,37 @@ app.post(
 
           break;
         }
+        case "checkout.session.expired": {
+  const session = event.data.object;
+  
+  console.log("⏰ Checkout session expired:", session.id);
+  
+  // Release the reservation
+  const productIds = JSON.parse(session.metadata.productIds || "[]")
+    .filter(Boolean)
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .map((id) => new mongoose.Types.ObjectId(id));
+
+  if (productIds.length > 0) {
+    await Product.updateMany(
+      { 
+        _id: { $in: productIds },
+        status: 'reserved'
+      },
+      { 
+        $set: { 
+          status: 'for-sale',
+          reservedBy: null,
+          reservedAt: null,
+          reservedUntil: null,
+        } 
+      }
+    );
+    console.log(`✅ Released ${productIds.length} products from expired session`);
+  }
+  
+  break;
+}
 
         // Ignore other events safely
         default:
@@ -402,7 +433,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
               images: item.images && item.images[0] ? [item.images[0]] : [],
               description: item.brand || '',
             },
-            unit_amount: Math.round(item.price * 100), // Convert to cents
+            unit_amount: Math.round(item.price * 100),
           },
           quantity: item.quantity || 1,
         };
@@ -415,17 +446,17 @@ app.post('/api/create-checkout-session', async (req, res) => {
       },
       
       success_url: `${process.env.CLIENT_URL}/order-confirmation?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${process.env.CLIENT_URL}/cart`,
+      cancel_url: `${process.env.CLIENT_URL}/checkout`, // ✅ Changed from /cart to /checkout
+      
       metadata: {
-        userId: userId,
-        // ✅ REMOVE IMAGES from metadata - only store essential data
+        userId: userId || "guest", // ✅ Handle guest users
         items: JSON.stringify(items.map(item => ({
           id: item.id || item._id,
           title: item.title,
           price: item.price,
           quantity: item.quantity,
           size: item.size,
-          // images: item.images, // ❌ REMOVE THIS - causes metadata to exceed 500 chars
+          brand: item.brand, // ✅ Added brand
         }))),
         productIds: JSON.stringify(productIds),
       },
@@ -439,6 +470,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
+
 
 // Create or retrieve a Stripe customer and store mapping in MongoDB
 app.post('/api/create-customer', async (req, res) => {

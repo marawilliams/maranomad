@@ -28,6 +28,7 @@ const Checkout = () => {
   const productIdsRef = useRef<string[]>(productsInCart.map((p) => p.id));
   const reservationActive = useRef(!!reservationMade);
   const shouldBlockNavigation = useRef(true);
+  const beforeUnloadHandler = useRef<((e: BeforeUnloadEvent) => void) | null>(null);
   
   const TOTAL_TIME = 60 * 60 * 1000;
 
@@ -37,24 +38,22 @@ const Checkout = () => {
   const total = subtotal + shipping + tax;
 
   // Release function
-// In the releaseItems function, change:
-const releaseItems = async (source: string) => {
-  if (shouldRelease.current && reservationActive.current) { // ✅ Remove auth.currentUser check
-    console.log(`🚀 [${source}] Releasing reservation`);
-    reservationActive.current = false;
+  const releaseItems = async (source: string) => {
+    if (shouldRelease.current && reservationActive.current) {
+      console.log(`🚀 [${source}] Releasing reservation`);
+      reservationActive.current = false;
 
-    try {
-      await customFetch.post("/release-reservations", {
-        productIds: productIdsRef.current,
-        userId: auth.currentUser?.uid || "guest", // ✅ Use "guest" if no user
-      });
-      console.log(`✅ [${source}] Released successfully`);
-    } catch (err) {
-      console.error(`❌ [${source}] Release failed:`, err);
+      try {
+        await customFetch.post("/release-reservations", {
+          productIds: productIdsRef.current,
+          userId: auth.currentUser?.uid || "guest",
+        });
+        console.log(`✅ [${source}] Released successfully`);
+      } catch (err) {
+        console.error(`❌ [${source}] Release failed:`, err);
+      }
     }
-  }
-};
-
+  };
 
   // Block navigation attempts (unless shouldBlockNavigation is false)
   const blocker = useBlocker(
@@ -66,11 +65,15 @@ const releaseItems = async (source: string) => {
   // Handle browser refresh, back button, close tab
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!shouldBlockNavigation.current) {
+        return;
+      }
       e.preventDefault();
       e.returnValue = "";
       return "";
     };
     
+    beforeUnloadHandler.current = handleBeforeUnload;
     window.addEventListener("beforeunload", handleBeforeUnload);
     
     return () => {
@@ -85,12 +88,10 @@ const releaseItems = async (source: string) => {
     const updateTimer = () => {
       const remaining = expiresAt.getTime() - Date.now();
       if (remaining <= 0) {
-        // Disable blocking before navigation
         shouldBlockNavigation.current = false;
         shouldRelease.current = true;
         reservationActive.current = true;
         
-        // Release items and navigate
         releaseItems("TimerExpired").then(() => {
           toast.error("Reservation expired!");
           navigate("/cart");
@@ -115,20 +116,18 @@ const releaseItems = async (source: string) => {
     }
   };
 
-  // In handleCheckout, change:
-const handleCheckout = async () => {
-  // ✅ REMOVE THIS CHECK
-  // if (!auth.currentUser) {
-  //   toast.error("Please log in to checkout");
-  //   navigate("/login");
-  //   return;
-  // }
-
+  const handleCheckout = async () => {
   if (productsInCart.length === 0) {
     toast.error("Your cart is empty");
     return;
   }
 
+  // ✅ DON'T disable these until redirect actually happens
+  // Just remove the beforeunload listener
+  if (beforeUnloadHandler.current) {
+    window.removeEventListener("beforeunload", beforeUnloadHandler.current);
+  }
+  
   setLoading(true);
 
   try {
@@ -141,21 +140,54 @@ const handleCheckout = async () => {
         size: item.size ?? "",
         brand: item.brand ?? "",
       })),
-      userId: auth.currentUser?.uid || null, // ✅ Send null for guests
+      userId: auth.currentUser?.uid || null,
     });
 
     if (data.url) {
+      // ✅ Disable these RIGHT before redirect
       shouldBlockNavigation.current = false;
       shouldRelease.current = false;
       reservationActive.current = false;
-      dispatch(clearCart());
+      
+      // Redirect immediately
       window.location.href = data.url;
     }
   } catch (error: any) {
+    // Re-add beforeunload listener if checkout fails
+    if (beforeUnloadHandler.current) {
+      window.addEventListener("beforeunload", beforeUnloadHandler.current);
+    }
+    
     toast.error(error.response?.data?.error || "Checkout failed. Please try again.");
     setLoading(false);
   }
 };
+
+  // Re-enable blocking if user comes back from Stripe
+useEffect(() => {
+  // Check if we're returning from Stripe (no location state but cart has items)
+  const isReturningFromStripe = !location.state?.reservationMade && productsInCart.length > 0;
+  
+  if (isReturningFromStripe) {
+    console.log("👈 User returned from Stripe, re-enabling page protections");
+    shouldBlockNavigation.current = true;
+    shouldRelease.current = true;
+    reservationActive.current = true;
+    
+    // Re-add beforeunload handler
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (!shouldBlockNavigation.current) {
+        return;
+      }
+      e.preventDefault();
+      e.returnValue = "";
+      return "";
+    };
+    
+    beforeUnloadHandler.current = handleBeforeUnload;
+    window.addEventListener("beforeunload", handleBeforeUnload);
+  }
+}, [location.state, productsInCart.length]);
 
   const formatTime = (ms: number) => {
     const min = Math.floor(ms / 60000);
@@ -172,8 +204,18 @@ const handleCheckout = async () => {
   const colors = getColor();
 
   // If no reservation, return null or redirect
-  if (!reservationMade || productsInCart.length === 0) return null;
-
+  if (productsInCart.length === 0) {
+    return (
+      <div className="max-w-screen-2xl mx-auto px-5 py-24 text-center">
+        <div className="font-eskool text-[#3a3d1c]">
+          <h2 className="text-3xl mb-4">Your cart is empty</h2>
+          <Link to="/shop" className="inline-block bg-[#3a3d1c] text-white px-6 py-3 rounded-lg">
+            Continue Shopping
+          </Link>
+        </div>
+      </div>
+    );
+  }
   return (
     <>
       {/* Navigation Blocker Modal */}
