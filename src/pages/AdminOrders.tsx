@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { onAuthStateChanged } from "firebase/auth";
 import { auth } from "../firebase/config";
 import customFetch from "../axios/custom";
+import { Link } from "react-router-dom";
 
 interface Order {
   _id: string;
@@ -144,6 +145,11 @@ const AdminOrders = () => {
         >
           Refresh Orders
         </button>
+      </div>
+      <div className="mb-9">
+      <Link to="/admin" className=" bg-[#6a6c27] text-white/90 px-3 py-2 rounded hover:bg-[#6a6c27]/60 text-sm"  >
+          back to admin
+      </Link>
       </div>
 
       {/* Filter */}
