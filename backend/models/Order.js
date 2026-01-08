@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 
 const orderSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
+  userId: { type: String, required: false }, // ✅ Changed to false for guest orders
+  customerEmail: { type: String, required: true }, // ✅ Added this field
 
   products: [
     {

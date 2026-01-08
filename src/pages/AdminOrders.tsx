@@ -6,7 +6,8 @@ import customFetch from "../axios/custom";
 
 interface Order {
   _id: string;
-  userId: string;
+  userId?: string;              // ✅ Make optional for guest users
+  customerEmail: string;        // ✅ Add this line
   products: Array<{
     productId: string;
     title: string;
@@ -217,6 +218,7 @@ const AdminOrders = () => {
                 <div>
                   <h4 className="font-semibold mb-2">User ID</h4>
                   <p className="text-sm">{order.userId}</p>
+                  <p className='text-sm'>Email: {order.customerEmail}</p>
                   {order.paymentIntentId && (
                     <p className="text-xs text-gray-500 mt-1">Payment: {order.paymentIntentId}</p>
                   )}

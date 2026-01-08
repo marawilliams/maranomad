@@ -81,9 +81,27 @@ app.post(
           const session = event.data.object;
 
           console.log("✅ Checkout completed:", session.id);
+  // ✅ ADD DETAILED LOGGING
+  console.log("Session customer_details:", JSON.stringify(session.customer_details, null, 2));
+  console.log("Session customer_email:", session.customer_email);
+  console.log("Session metadata:", JSON.stringify(session.metadata, null, 2));
 
+  // ✅ BETTER EMAIL EXTRACTION with fallbacks
+  const customerEmail = 
+    session.customer_details?.email || 
+    session.customer_email || 
+    session.receipt_email ||
+    null;
+
+  if (!customerEmail) {
+    console.error("❌ ERROR: No customer email found in Stripe session!");
+    console.error("Full session object:", JSON.stringify(session, null, 2));
+    return res.status(400).send("Customer email is required");
+  }
+
+  console.log("📧 Customer email:", customerEmail);
           // ✅ DEFINE VARIABLES FIRST - moved from below
-          const userId = session.metadata.userId;
+          const userId = session.metadata.userId || null;
           const items = JSON.parse(session.metadata.items || "[]");
           const productIds = JSON.parse(session.metadata.productIds || "[]")
             .filter(Boolean)
@@ -180,7 +198,8 @@ app.post(
 
           // ✅ Save order in MongoDB
           const order = new Order({
-            userId,
+            userId: userId === "guest" ? null : userId,
+            customerEmail: customerEmail,
             products: items.map((item, i) => ({
               productId: productIds[i],
               title: item.title,

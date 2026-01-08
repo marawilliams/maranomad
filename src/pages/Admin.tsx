@@ -167,10 +167,10 @@ const Admin = () => {
   return (
     <div className="font-eskool max-w-screen-2xl mx-auto px-5 py-8">
       <h1 className="text-3xl font-bold mb-8">admin panel</h1>
-      <Link to="/admin/orders" className="bg-[#6a6c27] text-white px-3 py-2 rounded hover:bg-[#6a6c27]/60 text-sm"  >
-          Manage Orders
+      <Link to="/admin/orders" className=" bg-[#6a6c27] text-white/90 px-3 py-2 rounded hover:bg-[#6a6c27]/60 text-sm"  >
+          manage orders
       </Link>
-      <section className="mb-8">
+      <section className="mb-8 mt-6">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-semibold">products ({products.length})</h2>
           <div className="flex gap-2">

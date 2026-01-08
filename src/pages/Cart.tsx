@@ -50,62 +50,56 @@ const Cart = () => {
   };
 
   const handleCheckoutProcess = async () => {
-    if (!auth.currentUser) {
-      toast.error("Please log in to checkout");
-      navigate("/login");
-      return;
-    }
 
-    const productIds = productsInCart.map(p => p.id);
 
-    if (productIds.length === 0) {
-      toast.error("Cart is empty");
-      return;
-    }
+  const productIds = productsInCart.map(p => p.id);
 
-    if (unavailableItems.length > 0) {
-      toast.error("Please remove unavailable items first");
-      return;
-    }
+  if (productIds.length === 0) {
+    toast.error("Cart is empty");
+    return;
+  }
 
-    setReserving(true);
+  if (unavailableItems.length > 0) {
+    toast.error("Please remove unavailable items first");
+    return;
+  }
 
-    try {
-      toast.loading("Reserving items…", { id: "reserving" });
+  setReserving(true);
 
-      const { data } = await customFetch.post("/reserve-products", {
-        productIds,
-        userId: auth.currentUser.uid,
-      });
+  try {
+    toast.loading("Reserving items…", { id: "reserving" });
 
-      toast.dismiss("reserving");
-      toast.success("Items reserved for 1 hour!");
+    const { data } = await customFetch.post("/reserve-products", {
+      productIds,
+      userId: auth.currentUser?.uid || "guest", // ✅ Use "guest" if no user
+    });
 
-      // ✅ Navigate WITH reservation data
-      navigate("/checkout", { 
-        state: { 
-          expiresAt: data.expiresAt,
-          reservationMade: true 
-        } 
-      });
+    toast.dismiss("reserving");
+    toast.success("Items reserved for 1 hour!");
 
-    } catch (err: any) {
-      toast.dismiss("reserving");
-      
-      if (err.response?.status === 409) {
-        const unavailable = err.response.data?.unavailable || [];
-        if (unavailable.length > 0) {
-          toast.error(`Some items are no longer available. Please remove them.`);
-          // Update unavailable list
-          setUnavailableItems(unavailable);
-        }
-      } else {
-        toast.error(err.response?.data?.error || "Failed to reserve items");
+    navigate("/checkout", { 
+      state: { 
+        expiresAt: data.expiresAt,
+        reservationMade: true 
+      } 
+    });
+
+  } catch (err: any) {
+    toast.dismiss("reserving");
+    
+    if (err.response?.status === 409) {
+      const unavailable = err.response.data?.unavailable || [];
+      if (unavailable.length > 0) {
+        toast.error(`Some items are no longer available. Please remove them.`);
+        setUnavailableItems(unavailable);
       }
-    } finally {
-      setReserving(false);
+    } else {
+      toast.error(err.response?.data?.error || "Failed to reserve items");
     }
-  };
+  } finally {
+    setReserving(false);
+  }
+};
 
   return (
     <div className="font-eskool text-[#3a3d1c] bg-white/50 mx-auto max-w-screen-2xl px-5">

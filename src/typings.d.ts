@@ -37,15 +37,28 @@ interface User {
 }
 
 interface Order {
-  id: string;                 // MongoDB _id
-  orderStatus: string;
-  orderDate: string;
+  _id: string;                // ✅ MongoDB uses _id, not id
+  userId?: string;            // ✅ Optional for guest users
+  customerEmail: string;      // ✅ Added email field
+  
+  products: {
+    productId: string;
+    title: string;
+    quantity: number;
+    price: number;
+    size?: string;
+  }[];
+
   subtotal: number;
+  status: 'paid' | 'processing' | 'shipped' | 'delivered' | 'cancelled'; // ✅ Changed from orderStatus
+  
+  // Tracking fields
+  trackingNumber?: string;
+  carrier?: string;
+  trackingUrl?: string;
+  shippedAt?: Date;
 
-  products: ProductInCart[];
-
-  // Shipping (what you already show as `data`)
-  data: {
+  shippingAddress: {        // ✅ Changed from 'data' to 'shippingAddress'
     firstName: string;
     lastName: string;
     address: string;
@@ -57,12 +70,15 @@ interface Order {
     phone?: string;
   };
 
-  // ✅ NEW: Payment summary (safe)
+  paymentIntentId?: string;
+  refundId?: string;
+
   paymentMethod?: {
     brand: string;
     last4: string;
     expMonth?: number;
     expYear?: number;
   };
-}
 
+  createdAt: Date;           // ✅ Changed from orderDate
+}

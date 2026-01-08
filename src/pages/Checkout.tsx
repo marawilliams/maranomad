@@ -37,22 +37,24 @@ const Checkout = () => {
   const total = subtotal + shipping + tax;
 
   // Release function
-  const releaseItems = async (source: string) => {
-    if (shouldRelease.current && reservationActive.current && auth.currentUser) {
-      console.log(`🚀 [${source}] Releasing reservation`);
-      reservationActive.current = false;
+// In the releaseItems function, change:
+const releaseItems = async (source: string) => {
+  if (shouldRelease.current && reservationActive.current) { // ✅ Remove auth.currentUser check
+    console.log(`🚀 [${source}] Releasing reservation`);
+    reservationActive.current = false;
 
-      try {
-        await customFetch.post("/release-reservations", {
-          productIds: productIdsRef.current,
-          userId: auth.currentUser.uid,
-        });
-        console.log(`✅ [${source}] Released successfully`);
-      } catch (err) {
-        console.error(`❌ [${source}] Release failed:`, err);
-      }
+    try {
+      await customFetch.post("/release-reservations", {
+        productIds: productIdsRef.current,
+        userId: auth.currentUser?.uid || "guest", // ✅ Use "guest" if no user
+      });
+      console.log(`✅ [${source}] Released successfully`);
+    } catch (err) {
+      console.error(`❌ [${source}] Release failed:`, err);
     }
-  };
+  }
+};
+
 
   // Block navigation attempts (unless shouldBlockNavigation is false)
   const blocker = useBlocker(
@@ -113,45 +115,47 @@ const Checkout = () => {
     }
   };
 
-  const handleCheckout = async () => {
-    if (!auth.currentUser) {
-      toast.error("Please log in to checkout");
-      navigate("/login");
-      return;
+  // In handleCheckout, change:
+const handleCheckout = async () => {
+  // ✅ REMOVE THIS CHECK
+  // if (!auth.currentUser) {
+  //   toast.error("Please log in to checkout");
+  //   navigate("/login");
+  //   return;
+  // }
+
+  if (productsInCart.length === 0) {
+    toast.error("Your cart is empty");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const { data } = await customFetch.post("/create-checkout-session", {
+      items: productsInCart.map((item) => ({
+        id: item.id,
+        title: item.title,
+        price: item.price,
+        quantity: item.quantity ?? 1,
+        size: item.size ?? "",
+        brand: item.brand ?? "",
+      })),
+      userId: auth.currentUser?.uid || null, // ✅ Send null for guests
+    });
+
+    if (data.url) {
+      shouldBlockNavigation.current = false;
+      shouldRelease.current = false;
+      reservationActive.current = false;
+      dispatch(clearCart());
+      window.location.href = data.url;
     }
-
-    if (productsInCart.length === 0) {
-      toast.error("Your cart is empty");
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const { data } = await customFetch.post("/create-checkout-session", {
-        items: productsInCart.map((item) => ({
-          id: item.id,
-          title: item.title,
-          price: item.price,
-          quantity: item.quantity ?? 1,
-          size: item.size ?? "",
-          brand: item.brand ?? "",
-        })),
-        userId: auth.currentUser.uid,
-      });
-
-      if (data.url) {
-        shouldBlockNavigation.current = false;
-        shouldRelease.current = false;
-        reservationActive.current = false;
-        dispatch(clearCart());
-        window.location.href = data.url;
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || "Checkout failed. Please try again.");
-      setLoading(false);
-    }
-  };
+  } catch (error: any) {
+    toast.error(error.response?.data?.error || "Checkout failed. Please try again.");
+    setLoading(false);
+  }
+};
 
   const formatTime = (ms: number) => {
     const min = Math.floor(ms / 60000);
