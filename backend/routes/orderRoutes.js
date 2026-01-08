@@ -1,189 +1,219 @@
 const express = require("express");
 const router = express.Router();
 const admin = require("firebase-admin");
-const Order = require('../models/Order');
-const formData = require('form-data');
-const Mailgun = require('mailgun.js');
+const mongoose = require("mongoose");
+const Order = require("../models/Order");
+const formData = require("form-data");
+const Mailgun = require("mailgun.js");
 
 // Initialize Mailgun
 const mailgun = new Mailgun(formData);
 const mg = mailgun.client({
-  username: 'api',
-  key: process.env.MAILGUN_API_KEY
+  username: "api",
+  key: process.env.MAILGUN_API_KEY,
 });
 
 const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN;
 
-// GET all orders (admin only)
-router.get('/', async (req, res) => {
+// ====================
+// GET all orders (admin)
+// ====================
+router.get("/", async (req, res) => {
   try {
-    const orders = await Order.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    const orders = await Order.find().sort({ createdAt: -1 }).lean();
     res.json(orders);
   } catch (err) {
-    console.error('Error fetching orders:', err);
-    res.status(500).json({ error: 'Failed to fetch orders' });
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ error: "Failed to fetch orders" });
   }
 });
 
-// GET single order
-router.get('/:id', async (req, res) => {
+// ====================
+// GET single order by ID
+// ====================
+router.get("/:id", async (req, res) => {
   try {
-    const order = await Order.findById(req.params.id);
+    const orderId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ error: "Invalid order ID" });
+    }
+
+    const order = await Order.findById(orderId);
     if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+      return res.status(404).json({ error: "Order not found" });
     }
     res.json(order);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch order' });
+    console.error("Failed to fetch order:", err);
+    res.status(500).json({ error: "Failed to fetch order" });
   }
 });
 
+// ====================
 // UPDATE order status
-router.put('/:id/status', async (req, res) => {
+// ====================
+router.put("/:id/status", async (req, res) => {
   const { status } = req.body;
-  
+
   try {
+    const orderId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ error: "Invalid order ID" });
+    }
+
     const order = await Order.findByIdAndUpdate(
-      req.params.id,
+      orderId,
       { status },
       { new: true }
     );
-    
+
     if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+      return res.status(404).json({ error: "Order not found" });
     }
-    
+
     res.json(order);
   } catch (err) {
-    res.status(500).json({ error: 'Failed to update order status' });
+    console.error("Failed to update order status:", err);
+    res.status(500).json({ error: "Failed to update order status" });
   }
 });
 
-// In your orderRoutes.js, update the ship endpoint:
-
-router.post('/:id/ship', async (req, res) => {
+// ====================
+// MARK ORDER AS SHIPPED
+// ====================
+router.post("/:id/ship", async (req, res) => {
   const { trackingNumber, carrier, trackingUrl } = req.body;
-  
-  console.log('📦 Ship order request:', { orderId: req.params.id, trackingNumber, carrier });
-  
+
+  console.log("📦 Ship order request:", {
+    orderId: req.params.id,
+    trackingNumber,
+    carrier,
+  });
+
   if (!trackingNumber || !carrier) {
-    return res.status(400).json({ error: 'Tracking number and carrier are required' });
+    return res.status(400).json({
+      error: "Tracking number and carrier are required",
+    });
   }
-  
-  // Check Mailgun config
+
   if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
-    console.error('❌ Mailgun not configured! Missing API key or domain');
-    return res.status(500).json({ error: 'Email service not configured' });
+    console.error("❌ Mailgun not configured");
+    return res.status(500).json({ error: "Email service not configured" });
   }
-  
+
   try {
-    // Update order
-    let order = await Order.findByIdAndUpdate(
-      req.params.id,
+    const orderId = req.params.id;
+    if (!mongoose.Types.ObjectId.isValid(orderId)) {
+      return res.status(400).json({ error: "Invalid order ID" });
+    }
+
+    // Update order with shipped status
+    const order = await Order.findByIdAndUpdate(
+      orderId,
       {
-        status: 'shipped',
+        status: "shipped",
         trackingNumber,
         carrier,
-        trackingUrl: trackingUrl || `https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`,
-        shippedAt: new Date()
+        trackingUrl:
+          trackingUrl ||
+          `https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`,
+        shippedAt: new Date(),
       },
       { new: true }
     );
 
     if (!order) {
-      return res.status(404).json({ error: 'Order not found' });
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    // ✅ FIX: Fetch the order again with all fields
-    order = await Order.findById(req.params.id);
-    
-    console.log('✅ Order updated:', order._id);
-    console.log('Products:', order.products); // Debug log
+    console.log("✅ Order updated:", order._id);
 
-    // Check if products array exists
+    // Validate products
     if (!order.products || order.products.length === 0) {
-      console.error('❌ Order has no products!');
-      return res.status(400).json({ error: 'Order has no products' });
+      console.error("❌ Order has no products:", order._id);
+      return res.status(400).json({ error: "Order has no products" });
     }
 
-    // Get customer email
-    let customerEmail;
-    try {
-      const User = require('../models/User');
-      const user = await User.findOne({ uid: order.userId });
-      customerEmail = user?.email;
-      
-      if (!customerEmail) {
-        console.error('❌ No email found for user:', order.userId);
-        return res.status(400).json({ error: 'Customer email not found' });
-      }
-      
-      console.log('📧 Sending email to:', customerEmail);
-    } catch (err) {
-      console.error('❌ Error finding user:', err);
-      return res.status(500).json({ error: 'Could not find customer email' });
-    }
+    // Get email from order (guest-safe)
+    const customerEmail = order.customerEmail;
+    console.log("📧 Customer email from order:", customerEmail);
 
-    // Generate tracking URL
-    const finalTrackingUrl = trackingUrl || getCarrierTrackingUrl(carrier, trackingNumber);
-
-    // Send tracking email via Mailgun
-    try {
-      console.log('Full order object:', JSON.stringify(order, null, 2));
-
-      const emailData = {
-        from: `Your Store <noreply@${MAILGUN_DOMAIN}>`,
-        to: [customerEmail],
-        subject: `Your order has shipped! 📦 - Order #${order._id.toString().slice(-8)}`,
-        html: generateTrackingEmailHTML(order, carrier, trackingNumber, finalTrackingUrl)
-      };
-      
-      console.log('📤 Sending email via Mailgun...', { to: customerEmail, domain: MAILGUN_DOMAIN });
-      
-      const result = await mg.messages.create(MAILGUN_DOMAIN, emailData);
-      
-      console.log('✅ Email sent successfully!', result);
-      console.log('Message ID:', result.id);
-      
-    } catch (emailError) {
-      console.error('❌ Mailgun error:', emailError);
-      console.error('Error details:', emailError.message);
-      
-      return res.status(500).json({ 
-        error: 'Failed to send tracking email',
-        details: emailError.message 
+    if (!customerEmail) {
+      console.error("❌ Order missing customer email:", order._id);
+      return res.status(400).json({
+        error: "Order has no customer email",
+        orderId: order._id,
       });
     }
 
-    res.json({ 
-      message: 'Order marked as shipped and tracking email sent',
+    // Generate tracking URL
+    const finalTrackingUrl =
+      trackingUrl || getCarrierTrackingUrl(carrier, trackingNumber);
+
+    // Send tracking email via Mailgun
+    try {
+      const emailData = {
+        from: `Your Store <noreply@${MAILGUN_DOMAIN}>`,
+        to: [customerEmail],
+        subject: `Your order has shipped! 📦 - Order #${order._id
+          .toString()
+          .slice(-8)}`,
+        html: generateTrackingEmailHTML(
+          order,
+          carrier,
+          trackingNumber,
+          finalTrackingUrl
+        ),
+      };
+
+      console.log("📤 Sending tracking email...", {
+        to: customerEmail,
+        orderId: order._id,
+      });
+
+      const result = await mg.messages.create(MAILGUN_DOMAIN, emailData);
+      console.log("✅ Email sent:", result.id);
+    } catch (emailError) {
+      console.error("❌ Failed to send email:", emailError.message);
+      return res.status(500).json({
+        error: "Failed to send tracking email",
+        details: emailError.message,
+      });
+    }
+
+    res.json({
+      message: "Order marked as shipped and tracking email sent",
       order,
-      emailSent: true
+      emailSent: true,
     });
   } catch (err) {
-    console.error('❌ Error shipping order:', err);
-    res.status(500).json({ error: 'Failed to update order', details: err.message });
+    console.error("❌ Error shipping order:", err);
+    return res.status(500).json({
+      error: "Failed to update order",
+      details: err.message,
+    });
   }
 });
 
-// Helper function to generate carrier tracking URLs
+// ====================
+// HELPER: Generate carrier tracking URL
+// ====================
 function getCarrierTrackingUrl(carrier, trackingNumber) {
   const urls = {
-    'USPS': `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`,
-    'UPS': `https://www.ups.com/track?trackingNumber=${trackingNumber}`,
-    'FedEx': `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`,
-    'DHL': `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`,
+    USPS: `https://tools.usps.com/go/TrackConfirmAction?tLabels=${trackingNumber}`,
+    UPS: `https://www.ups.com/track?trackingNumber=${trackingNumber}`,
+    FedEx: `https://www.fedex.com/fedextrack/?trknbr=${trackingNumber}`,
+    DHL: `https://www.dhl.com/en/express/tracking.html?AWB=${trackingNumber}`,
   };
-  
   return urls[carrier] || `https://www.google.com/search?q=${carrier}+tracking+${trackingNumber}`;
 }
-// Replace your generateTrackingEmailHTML function with this:
+
+// ====================
+// HELPER: Generate tracking email HTML
+// ====================
 function generateTrackingEmailHTML(order, carrier, trackingNumber, trackingUrl) {
-  // Safety check for products
   const products = order.products || [];
-  
+
   return `
     <!DOCTYPE html>
     <html>
@@ -206,50 +236,52 @@ function generateTrackingEmailHTML(order, carrier, trackingNumber, trackingUrl) 
         <div class="header">
           <h1 style="margin: 0;">Your Order Has Shipped! 🎉</h1>
         </div>
-        
         <div class="content">
           <p>Great news! Your order is on its way to you.</p>
-          
           <div class="tracking-box">
             <h3 style="margin-top: 0;">Tracking Information</h3>
-            <p style="margin: 5px 0;"><strong>Order Number:</strong> #${order._id.toString().slice(-8)}</p>
-            <p style="margin: 5px 0;"><strong>Carrier:</strong> ${carrier}</p>
-            <p style="margin: 5px 0;"><strong>Tracking Number:</strong> ${trackingNumber}</p>
+            <p><strong>Order Number:</strong> #${order._id.toString().slice(-8)}</p>
+            <p><strong>Carrier:</strong> ${carrier}</p>
+            <p><strong>Tracking Number:</strong> ${trackingNumber}</p>
           </div>
-
           <div style="text-align: center;">
-            <a href="${trackingUrl}" class="button">
-              Track Your Package
-            </a>
+            <a href="${trackingUrl}" class="button">Track Your Package</a>
           </div>
-
-          ${products.length > 0 ? `
-            <div class="items">
-              <h3 style="margin-top: 0;">Items Shipped</h3>
-              ${products.map(item => `
-                <div class="item">
-                  <strong>${item.title || 'Product'}</strong>
-                  ${item.size ? `<span style="color: #666;"> - Size: ${item.size}</span>` : ''}
-                  <br>
-                  <span style="color: #666;">Quantity: ${item.quantity || 1} × $${(item.price || 0).toFixed(2)}</span>
-                </div>
-              `).join('')}
-            </div>
-          ` : ''}
-
+          ${
+            products.length > 0
+              ? `<div class="items">
+                  <h3 style="margin-top: 0;">Items Shipped</h3>
+                  ${products
+                    .map(
+                      (item) => `<div class="item">
+                        <strong>${item.title || "Product"}</strong>
+                        ${item.size ? `<span> - Size: ${item.size}</span>` : ""}
+                        <br>
+                        <span>Quantity: ${item.quantity || 1} × $${(
+                        item.price || 0
+                      ).toFixed(2)}</span>
+                      </div>`
+                    )
+                    .join("")}
+                </div>`
+              : ""
+          }
           <div style="background: white; padding: 15px; border-radius: 5px;">
             <h3 style="margin-top: 0;">Shipping Address</h3>
-            <p style="margin: 5px 0;">
-              ${order.shippingAddress?.firstName || ''} ${order.shippingAddress?.lastName || ''}<br>
-              ${order.shippingAddress?.address || ''}<br>
-              ${order.shippingAddress?.city || ''}, ${order.shippingAddress?.region || ''} ${order.shippingAddress?.postalCode || ''}
-              ${order.shippingAddress?.phone ? `<br>Phone: ${order.shippingAddress.phone}` : ''}
+            <p>
+              ${order.shippingAddress?.firstName || ""} ${
+    order.shippingAddress?.lastName || ""
+  }<br>
+              ${order.shippingAddress?.address || ""}<br>
+              ${order.shippingAddress?.city || ""}, ${
+    order.shippingAddress?.region || ""
+  } ${order.shippingAddress?.postalCode || ""}${
+    order.shippingAddress?.phone ? `<br>Phone: ${order.shippingAddress.phone}` : ""
+  }
             </p>
           </div>
-
-          <p style="margin-top: 30px;">If you have any questions about your order, please don't hesitate to contact us.</p>
+          <p style="margin-top: 30px;">If you have any questions about your order, please contact us.</p>
         </div>
-
         <div class="footer">
           <p>Thank you for your purchase!</p>
         </div>
@@ -258,30 +290,5 @@ function generateTrackingEmailHTML(order, carrier, trackingNumber, trackingUrl) 
     </html>
   `;
 }
-
-module.exports = router;
-// GET all orders for a user by UID
-router.get("/:uid", async (req, res) => {
-  const { uid } = req.params;
-
-  try {
-    const ordersRef = admin.firestore().collection("orders");
-    const snapshot = await ordersRef.where("userId", "==", uid).get();
-
-    if (snapshot.empty) {
-      return res.json([]);
-    }
-
-    const orders = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-
-    res.json(orders);
-  } catch (err) {
-    console.error("Error fetching orders:", err);
-    res.status(500).json({ message: "Failed to fetch orders" });
-  }
-});
 
 module.exports = router;
