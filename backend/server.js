@@ -425,6 +425,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
       payment_method_types: ['card'],
       line_items: items.map(item => {
         console.log('📝 Processing item:', item.title, 'Price:', item.price);
+        console.log('Item details:', item.images);
         return {
           price_data: {
             currency: 'usd',

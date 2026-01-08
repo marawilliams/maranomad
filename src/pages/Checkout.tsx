@@ -343,6 +343,7 @@ const Checkout = () => {
           id: item.id,
           title: item.title,
           price: item.price,
+          images: item.images,
           quantity: item.quantity ?? 1,
           size: item.size ?? "",
           brand: item.brand ?? "",

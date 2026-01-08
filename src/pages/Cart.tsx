@@ -192,7 +192,7 @@ const Cart = () => {
             </ul>
           </section>
 
-          <section className="font-jetbrains lg:col-span-5 bg-gray-50 p-6 rounded-lg mt-10 lg:mt-0">
+          <section className="font-jetbrains lg:col-span-5 bg-gray-50/40 p-6 rounded-lg mt-10 lg:mt-0">
             <h2 className="text-lg font-medium">Order Summary</h2>
 
             <dl className="mt-6 space-y-4">
