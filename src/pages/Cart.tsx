@@ -35,13 +35,18 @@ const Cart = () => {
     
     try {
       const ids = productsInCart.map(p => p.id).join(",");
-      const uid = auth.currentUser?.uid || "";
+      const uid = auth.currentUser?.uid || "guest";
 
       const response = await customFetch.get(
         `/products/availability?ids=${ids}&uid=${uid}`
       );
 
+      // ✅ Use unavailableIds from response
       setUnavailableItems(response.data.unavailableIds || []);
+      
+      if (response.data.unavailableIds?.length > 0) {
+        console.log("⚠️ Unavailable items:", response.data.unavailableIds);
+      }
     } catch (err) {
       console.error("Availability check failed", err);
     } finally {
@@ -50,56 +55,61 @@ const Cart = () => {
   };
 
   const handleCheckoutProcess = async () => {
+    const productIds = productsInCart.map(p => p.id);
 
-
-  const productIds = productsInCart.map(p => p.id);
-
-  if (productIds.length === 0) {
-    toast.error("Cart is empty");
-    return;
-  }
-
-  if (unavailableItems.length > 0) {
-    toast.error("Please remove unavailable items first");
-    return;
-  }
-
-  setReserving(true);
-
-  try {
-    toast.loading("Reserving items…", { id: "reserving" });
-
-    const { data } = await customFetch.post("/reserve-products", {
-      productIds,
-      userId: auth.currentUser?.uid || "guest", // ✅ Use "guest" if no user
-    });
-
-    toast.dismiss("reserving");
-    toast.success("Items reserved for 1 hour!");
-
-    navigate("/checkout", { 
-      state: { 
-        expiresAt: data.expiresAt,
-        reservationMade: true 
-      } 
-    });
-
-  } catch (err: any) {
-    toast.dismiss("reserving");
-    
-    if (err.response?.status === 409) {
-      const unavailable = err.response.data?.unavailable || [];
-      if (unavailable.length > 0) {
-        toast.error(`Some items are no longer available. Please remove them.`);
-        setUnavailableItems(unavailable);
-      }
-    } else {
-      toast.error(err.response?.data?.error || "Failed to reserve items");
+    if (productIds.length === 0) {
+      toast.error("Cart is empty");
+      return;
     }
-  } finally {
-    setReserving(false);
-  }
-};
+
+    if (unavailableItems.length > 0) {
+      toast.error("Please remove unavailable items first");
+      return;
+    }
+
+    setReserving(true);
+
+    try {
+      toast.loading("Reserving items…", { id: "reserving" });
+
+      const { data } = await customFetch.post("/reserve-products", {
+        productIds,
+        userId: auth.currentUser?.uid || "guest",
+      });
+
+      toast.dismiss("reserving");
+      toast.success("Items reserved for 1 hour!");
+
+      // ✅ Save to sessionStorage as backup
+      sessionStorage.setItem('checkout_expiresAt', data.expiresAt);
+      console.log("💾 Saved reservation to sessionStorage:", data.expiresAt);
+
+      navigate("/checkout", { 
+        state: { 
+          expiresAt: data.expiresAt,
+          reservationMade: true 
+        } 
+      });
+
+    } catch (err: any) {
+      toast.dismiss("reserving");
+      
+      if (err.response?.status === 409) {
+        const unavailable = err.response.data?.unavailable || [];
+        if (unavailable.length > 0) {
+          toast.error(`Some items are no longer available. Please remove them.`);
+          setUnavailableItems(unavailable);
+          
+          // ✅ Refresh availability to show which items are unavailable
+          setTimeout(() => checkAvailability(), 500);
+        }
+      } else {
+        toast.error(err.response?.data?.error || "Failed to reserve items");
+      }
+    } finally {
+      setReserving(false);
+    }
+  };
 
   return (
     <div className="font-eskool text-[#3a3d1c] bg-white/50 mx-auto max-w-screen-2xl px-5">
@@ -111,7 +121,7 @@ const Cart = () => {
             <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />
             <div className="ml-3 text-sm text-yellow-800">
               Items are not reserved until checkout. Items are reserved for{" "}
-              <strong>1 hour</strong> once you proceed.
+              <strong>1 hour</strong> once you proceed. Only one person can reserve an item at a time.
             </div>
           </div>
         </div>
@@ -131,7 +141,7 @@ const Cart = () => {
                     <li
                       key={product.id}
                       className={`flex py-6 transition ${
-                        isUnavailable ? "opacity-50 bg-gray-100" : ""
+                        isUnavailable ? "opacity-50 bg-red-50" : ""
                       }`}
                     >
                       <img
@@ -168,7 +178,9 @@ const Cart = () => {
                           {isUnavailable ? (
                             <>
                               <XMarkIcon className="h-4 w-4 text-red-600 mr-1" />
-                              Unavailable (reserved)
+                              <span className="text-red-600 font-medium">
+                                Reserved by another user
+                              </span>
                             </>
                           ) : (
                             <>
@@ -233,7 +245,7 @@ const Cart = () => {
               ) : refreshing ? (
                 "Checking availability..."
               ) : unavailableItems.length > 0 ? (
-                "Remove unavailable items"
+                "Remove reserved items first"
               ) : (
                 "Proceed to Checkout"
               )}
@@ -241,7 +253,7 @@ const Cart = () => {
 
             {unavailableItems.length > 0 && (
               <p className="mt-2 text-sm text-red-600 text-center">
-                {unavailableItems.length} item{unavailableItems.length > 1 ? 's' : ''} currently unavailable
+                {unavailableItems.length} item{unavailableItems.length > 1 ? 's are' : ' is'} reserved by another user
               </p>
             )}
           </section>

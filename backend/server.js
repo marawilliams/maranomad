@@ -528,19 +528,9 @@ app.get('/api/products', async (req, res) => {
   }
 });
 
-// GET single product by ID
-app.get('/api/products/:id', async (req, res) => {
-  try {
-    const product = await Product.findById(req.params.id);
-    if (!product) {
-      return res.status(404).json({ error: 'Product not found' });
-    }
-    res.json(product);
-  } catch (error) {
-    console.error('Error fetching product:', error);
-    res.status(500).json({ error: 'Invalid product ID or product not found' });
-  }
-});
+
+
+// Replace your existing /api/products/availability endpoint with this:
 
 app.get('/api/products/availability', async (req, res) => {
   try {
@@ -564,21 +554,46 @@ app.get('/api/products/availability', async (req, res) => {
       return res.status(400).json({ error: 'No valid product IDs provided' });
     }
 
+    const now = new Date();
+    
     const products = await Product.find(
       { _id: { $in: validIds } },
-      { status: 1 } // only fetch what we need
+      { status: 1, reservedBy: 1, reservedUntil: 1 }
     );
 
     const availability = {};
+    const unavailableIds = [];
 
     products.forEach(product => {
-      availability[product._id.toString()] =
-        product.status === 'for-sale'; // adjust if needed
+      const productId = product._id.toString();
+      
+      // ✅ Check if product is available
+      // Available if:
+      // 1. Status is 'for-sale', OR
+      // 2. Status is 'reserved' BUT reservation expired, OR
+      // 3. Status is 'reserved' BUT reserved by current user
+      const isAvailable = 
+        product.status === 'for-sale' ||
+        (product.status === 'reserved' && product.reservedUntil < now) ||
+        (product.status === 'reserved' && product.reservedBy === uid);
+
+      availability[productId] = isAvailable;
+      
+      if (!isAvailable) {
+        unavailableIds.push(productId);
+      }
+    });
+
+    console.log(`📊 Availability check for user ${uid}:`, {
+      total: validIds.length,
+      available: validIds.length - unavailableIds.length,
+      unavailable: unavailableIds.length
     });
 
     return res.json({
-      uid, // optional, but returned since frontend sends it
+      uid,
       availability,
+      unavailableIds, // ✅ Add this for easier frontend handling
     });
 
   } catch (err) {
@@ -587,6 +602,19 @@ app.get('/api/products/availability', async (req, res) => {
   }
 });
 
+// GET single product by ID
+app.get('/api/products/:id', async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) {
+      return res.status(404).json({ error: 'Product not found' });
+    }
+    res.json(product);
+  } catch (error) {
+    console.error('Error fetching product:', error);
+    res.status(500).json({ error: 'Invalid product ID or product not found' });
+  }
+});
 // Get orders for a user from MongoDB
 // Get orders for a user from MongoDB
 app.get('/api/orders/:uid', async (req, res) => {

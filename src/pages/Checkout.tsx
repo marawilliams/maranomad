@@ -379,17 +379,6 @@ const Checkout = () => {
     }
   };
 
-  // ✅ NEW: Handle component unmount (when leaving checkout page)
-  useEffect(() => {
-    return () => {
-      // Only release if NOT redirecting to Stripe
-      if (!redirectingToStripe.current && reservationActive.current) {
-        console.log("🚪 Component unmounting - releasing items");
-        releaseItems("ComponentUnmount");
-      }
-    };
-  }, []);
-
   const formatTime = (ms: number) => {
     const min = Math.floor(ms / 60000);
     const sec = Math.floor((ms % 60000) / 1000);
@@ -467,10 +456,10 @@ const Checkout = () => {
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto p-6">
-        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6">
+      <div className="font-eskool max-w-4xl mx-auto p-6">
+        <div className="bg-yellow-50/40 border-l-4 border-yellow-400 rounded-l rounded-lg p-4 mb-6">
           <p className="text-yellow-800 font-semibold">
-            ⚠️ don't leave this page!
+            don't leave this page!
           </p>
           <p className="text-yellow-700 text-sm">
             If you leave, refresh, or close this page, your reservation will be
@@ -478,12 +467,13 @@ const Checkout = () => {
           </p>
         </div>
 
+        <div className=" flex justify-between items-center">
         <h1 className="text-3xl font-bold mb-6">Checkout</h1>
 
         {/* Timer */}
         {expiresAt && (
-          <div className="mb-6 p-4 bg-white rounded-lg shadow">
-            <p className="text-sm text-gray-600 mb-2 uppercase tracking-wide">
+          <div className="mb-6 p-4 rounded-lg ">
+            <p className="text-sm text-gray-600 tracking-wide">
               time remaining on your reservation
             </p>
             <div className="flex items-center gap-4">
@@ -493,14 +483,16 @@ const Checkout = () => {
                   style={{ width: `${percentRemaining}%` }}
                 />
               </div>
-              <p className={`text-2xl font-bold ${colors.text} min-w-[80px]`}>
+              <p className={`text-md text-center font-bold ${colors.text} min-w-[80px]`}>
                 {timeRemaining > 0 ? formatTime(timeRemaining) : "0:00"}
               </p>
             </div>
           </div>
         )}
+        </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+
+        <div className="bg-white/70 rounded-lg shadow p-6">
           {/* Order Summary */}
           <h2 className="text-xl font-semibold mb-4">order summary</h2>
 
@@ -513,7 +505,14 @@ const Checkout = () => {
                   className="w-20 h-20 object-cover rounded"
                 />
                 <div className="flex-1">
-                  <h3 className="font-semibold">{item.title}</h3>
+                   <h3>
+                            <Link
+                              to={`/product/${item.id}`}
+                              className="hover:underline"
+                            >
+                              {item.title}
+                            </Link>
+                          </h3>
                   {item.size && (
                     <p className="text-sm text-gray-600">Size: {item.size}</p>
                   )}
@@ -521,7 +520,7 @@ const Checkout = () => {
                     Qty: {item.quantity || 1}
                   </p>
                 </div>
-                <p className="font-semibold">
+                <p className="text-[#13341E]/50">
                   ${(item.price * (item.quantity || 1)).toFixed(2)}
                 </p>
               </div>
@@ -541,7 +540,7 @@ const Checkout = () => {
               <span>Tax:</span>
               <span>${tax.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between font-bold text-lg pt-2 border-t">
+            <div className="flex text-[#13341E]/40 justify-between text-lg pt-2 border-t">
               <span>Total:</span>
               <span>${total.toFixed(2)}</span>
             </div>
@@ -562,7 +561,7 @@ const Checkout = () => {
             <button
               onClick={handleCheckout}
               disabled={loading}
-              className="w-full bg-[#13341E] text-white py-4 rounded-lg font-semibold hover:bg-[#13341E]/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[#13341E] text-white py-4 rounded-lg hover:bg-[#13341E]/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
             </button>
