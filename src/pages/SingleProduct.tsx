@@ -40,7 +40,7 @@ const SingleProduct = () => {
   };
 
   const handleAddToCart = () => {
-    if (!singleProduct || singleProduct.status !== "for-sale") return;
+    if (!singleProduct || (singleProduct.status !== "for-sale" && singleProduct.status !== "reserved")) return;
 
     dispatch(
       addProductToTheCart({
@@ -73,7 +73,7 @@ const SingleProduct = () => {
   if (loading) return <p className="text-center mt-12">Loading product...</p>;
   if (error || !singleProduct) return <p className="text-center mt-12">{error || "Product not found"}</p>;
 
-  const isForSale = singleProduct.status === "for-sale";
+  const isForSale = singleProduct.status === "for-sale" || singleProduct.status === "reserved";
   const currentMedia = singleProduct.images[currentImageIndex];
   const isCurrentMediaVideo = isVideo(currentMedia);
 
@@ -151,6 +151,7 @@ const SingleProduct = () => {
           </p>
           <p className="text-base font-bold lowercase">
             {singleProduct.status === "for-sale" && `$${singleProduct.price}`}
+            {singleProduct.status === "reserved" && `$${singleProduct.price}`}
             {singleProduct.status === "sold" && "Sold"}
             {singleProduct.status === "not-for-sale" && "Not for sale"}
           </p>
@@ -170,13 +171,16 @@ const SingleProduct = () => {
                 ? "add to cart"
                 : singleProduct.status === "sold"
                 ? "sold"
+                : singleProduct.status === "reserved"
+                ? "add to cart"
                 : "not for sale"
             }            
             onClick={handleAddToCart}
             disabled={!isForSale}
             style={
-              singleProduct.status !== "for-sale"
+              singleProduct.status !== "for-sale" && singleProduct.status !== "reserved"
                 ? { pointerEvents: "none" }
+              
                 : {}
             }
           />  

@@ -7,7 +7,7 @@ interface Product {
   stock: number;
 
   images: string[];            // unlimited images
-  status: "for-sale" | "sold" | "not-for-sale";
+  status: "for-sale" | "sold" | "not-for-sale" | "reserved";
   size: string;
   brand: string;
   createdAt?: string;

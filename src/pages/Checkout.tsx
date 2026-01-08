@@ -426,16 +426,16 @@ const Checkout = () => {
     <>
       {/* Navigation Blocker Modal */}
       {blocker.state === "blocked" && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+        <div className="font-eskool fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white/90 rounded-lg p-6 max-w-md w-full">
             <h2 className="text-2xl font-bold mb-4 text-[#8a2b13]">
-              ⚠️ Leave Checkout?
+              !!! Leaving Checkout?
             </h2>
             <p className="mb-4">
               Are you sure you want to leave? Your reservation will be released
               and these items will become available to other shoppers.
             </p>
-            <p className="mb-6 text-sm text-gray-600">
+            <p className="font-jetbrains mb-6 text-sm text-gray-600">
               ⏱ You have {formatTime(timeRemaining)} remaining
             </p>
             <div className="flex gap-3">
@@ -443,13 +443,13 @@ const Checkout = () => {
                 onClick={() => blocker.reset()}
                 className="flex-1 bg-[#13341E]/70 text-white py-3 rounded-lg hover:bg-[#13341E]/50 transition-colors"
               >
-                Stay & Complete Purchase
+                stay & complete purchase
               </button>
               <button
                 onClick={handleConfirmLeave}
                 className="flex-1 bg-gray-200 text-gray-800 py-3 rounded-lg hover:bg-gray-300 transition-colors"
               >
-                Leave Anyway
+                leave anyway
               </button>
             </div>
           </div>
@@ -457,11 +457,11 @@ const Checkout = () => {
       )}
 
       <div className="font-eskool max-w-4xl mx-auto p-6">
-        <div className="bg-yellow-50/40 border-l-4 border-yellow-400 rounded-l rounded-lg p-4 mb-6">
-          <p className="text-yellow-800 font-semibold">
+        <div className="bg-[#757933]/10 border-l-4 border-[#757933] rounded-l rounded-lg p-4 mb-6">
+          <p className="text-[#757933] font-semibold">
             don't leave this page!
           </p>
-          <p className="text-yellow-700 text-sm">
+          <p className="text-[#757933]/90 text-sm">
             If you leave, refresh, or close this page, your reservation will be
             released.
           </p>
@@ -483,7 +483,7 @@ const Checkout = () => {
                   style={{ width: `${percentRemaining}%` }}
                 />
               </div>
-              <p className={`text-md text-center font-bold ${colors.text} min-w-[80px]`}>
+              <p className={`font-jetbrains text-md text-center font-bold ${colors.text} min-w-[80px]`}>
                 {timeRemaining > 0 ? formatTime(timeRemaining) : "0:00"}
               </p>
             </div>
@@ -492,7 +492,7 @@ const Checkout = () => {
         </div>
 
 
-        <div className="bg-white/70 rounded-lg shadow p-6">
+        <div className="text-[#454715] font-jetbrains bg-white/70 rounded-lg shadow p-6">
           {/* Order Summary */}
           <h2 className="text-xl font-semibold mb-4">order summary</h2>
 
@@ -520,7 +520,7 @@ const Checkout = () => {
                     Qty: {item.quantity || 1}
                   </p>
                 </div>
-                <p className="text-[#13341E]/50">
+                <p className="font-jetbrains text-[#13341E]/50">
                   ${(item.price * (item.quantity || 1)).toFixed(2)}
                 </p>
               </div>
@@ -542,7 +542,7 @@ const Checkout = () => {
             </div>
             <div className="flex text-[#13341E]/40 justify-between text-lg pt-2 border-t">
               <span>Total:</span>
-              <span>${total.toFixed(2)}</span>
+              <span className="font-jetbrains">${total.toFixed(2)}</span>
             </div>
           </div>
 
@@ -561,7 +561,7 @@ const Checkout = () => {
             <button
               onClick={handleCheckout}
               disabled={loading}
-              className="w-full bg-[#13341E] text-white py-4 rounded-lg hover:bg-[#13341E]/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+              className="w-full bg-[#635bff] text-white py-4 rounded-lg hover:bg-[#0a2540]/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-300"
             >
               {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}
             </button>

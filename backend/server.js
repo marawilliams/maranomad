@@ -709,6 +709,9 @@ const RESERVATION_TIME = 60 * 60 * 1000; // 1 hour in ms
 
 // Find this endpoint in server.js and update it:
 app.post('/api/reserve-products', async (req, res) => {
+  const session = await Product.startSession(); // start a MongoDB session
+  session.startTransaction();
+  
   try {
     const { productIds, userId } = req.body;
     if (!productIds || !userId) {
@@ -721,15 +724,14 @@ app.post('/api/reserve-products', async (req, res) => {
     console.log(`🔒 Attempting to reserve ${productIds.length} products for user ${userId}`);
 
     const reservedProducts = [];
-    const unavailableProducts = [];
 
     for (const id of productIds) {
       const product = await Product.findOneAndUpdate(
         {
           _id: id,
           $or: [
-            { status: 'for-sale' }, // ✅ Changed from 'available'
-            { status: 'reserved', reservedUntil: { $lt: now } } // Expired reservation
+            { status: 'for-sale' },
+            { status: 'reserved', reservedUntil: { $lt: now } }
           ]
         },
         {
@@ -740,39 +742,90 @@ app.post('/api/reserve-products', async (req, res) => {
             reservedUntil: expiresAt
           }
         },
-        { new: true } // Return updated document
+        { new: true, session } // <-- important: include session
       );
 
-      if (product) {
-        reservedProducts.push(product);
-        console.log(`✅ Reserved product: ${product.title} (${product._id})`);
-      } else {
-        unavailableProducts.push(id);
-        console.log(`❌ Could not reserve product: ${id}`);
+      if (!product) {
+        throw new Error(`Product ${id} is unavailable`);
       }
+
+      reservedProducts.push(product);
+      console.log(`✅ Reserved product: ${product.title} (${product._id})`);
     }
 
-    if (unavailableProducts.length > 0) {
-      console.warn(`⚠️ ${unavailableProducts.length} products unavailable`);
-      return res.status(409).json({
-        error: 'Some products are unavailable',
-        reserved: reservedProducts,
-        unavailable: unavailableProducts
-      });
-    }
+    // All succeeded → commit
+    await session.commitTransaction();
+    session.endSession();
 
-    console.log(`✅ Successfully reserved ${reservedProducts.length} products for user ${userId}`);
-    
     res.json({
       success: true,
       reserved: reservedProducts,
       expiresAt: expiresAt.toISOString(),
     });
   } catch (err) {
-    console.error('❌ Error reserving products:', err);
-    res.status(500).json({ error: err.message });
+    // Rollback everything
+    await session.abortTransaction();
+    session.endSession();
+
+    console.warn('⚠️ Reservation failed, rolling back:', err.message);
+
+    res.status(409).json({
+      error: err.message,
+      reserved: [], // none reserved
+    });
   }
 });
+
+
+/**
+ * POST /api/reverse-reservation
+ * Body: { reserved: [{ _id, title, ... }], userId }
+ * 
+ * Use case: rollback reservations if checkout fails partially
+ */
+app.post('/api/reverse-reservation', async (req, res) => {
+  try {
+    const { reserved, userId } = req.body;
+
+    if (!Array.isArray(reserved) || reserved.length === 0) {
+      return res.status(400).json({ error: 'No reserved products provided' });
+    }
+
+    if (!userId) {
+      return res.status(400).json({ error: 'Missing userId' });
+    }
+
+    const productIds = reserved.map(item => item._id);
+
+    console.log(`↩️ Reversing reservation for ${productIds.length} products for user ${userId}`);
+
+    const result = await Product.updateMany(
+      {
+        _id: { $in: productIds },
+        reservedBy: userId, // Only release products reserved by this user
+        status: 'reserved',
+      },
+      {
+        $set: {
+          reservedBy: null,
+          reservedAt: null,
+          reservedUntil: null,
+          status: 'for-sale', // Or whatever your default status is
+        },
+      }
+    );
+
+    console.log(`✅ Successfully reversed ${result.modifiedCount} reservations`);
+    return res.status(200).json({
+      message: 'Reservations reversed successfully',
+      reversedCount: result.modifiedCount,
+    });
+  } catch (err) {
+    console.error('❌ Error reversing reservations:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 
 
 // ✅ Add this endpoint in server.js (after other routes)

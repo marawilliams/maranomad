@@ -8,7 +8,8 @@ export default {
       },
       fontFamily: {
         'nightly': ['nightly', 'sans-serif'],
-        'eskool':['eskool', 'sans-serif']
+        'eskool':['eskool', 'sans-serif'],
+        'jetbrains': ['JetBrains Mono', 'monospace'],
       },
     },
   },

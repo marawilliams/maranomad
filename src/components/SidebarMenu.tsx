@@ -64,7 +64,7 @@ const SidebarMenu = ({
     }
   }, [loginStatus]);
 
-  const linkClassName = "font-eskool py-2 border-secondaryBrown w-full block flex justify-center tracking-[3px] text-[#09140d] hover:text-[#9e9f96] transition-colors";
+  const linkClassName = "font-eskool py-2 border-secondaryBrown w-full block flex justify-center tracking-[3px] text-[#09140d] hover:text-[#757933]/60 transition-colors";
 
   if (!shouldRender) return null;
 
@@ -93,7 +93,7 @@ const SidebarMenu = ({
         <div className="flex justify-center mt-2">
           <Link 
               to="/" 
-  className="font-nightly text-3xl tracking-[3px] max-sm:text-3xl max-[400px]:text-2xl text-[#09140d] hover:text-[#9e9f96] transition-colors"
+  className="font-nightly text-3xl tracking-[3px] max-sm:text-3xl max-[400px]:text-2xl text-[#09140d] hover:text-[#757933]/60 transition-colors duration-500"
 >
   maran
 <svg 

@@ -19,11 +19,11 @@ const Header = () => {
   return (
     <>
       <header className="max-w-screen-2xl flex text-center justify-between items-center py-4 px-5 text-black mx-auto max-sm:px-5 max-[400px]:px-3 bg-[#d3d3d3]">
-        <HiBars3 className="text-2xl max-sm:text-xl mr-20 max-lg:mr-0 cursor-pointer  hover:text-[#9e9f96] transition-colors" onClick={() => setIsSidebarOpen(true)} />
+        <HiBars3 className="text-2xl max-sm:text-xl mr-20 max-lg:mr-0 cursor-pointer  hover:text-[#757933]/60 transition-colors" onClick={() => setIsSidebarOpen(true)} />
 
         <Link 
           to="/" 
-          className="font-nightly text-6xl tracking-[6px] max-sm:text-3xl max-[400px]:text-2xl text-[#09140d] hover:text-[#9e9f96] transition-colors"
+          className="font-nightly text-6xl tracking-[6px] max-sm:text-3xl max-[400px]:text-2xl text-[#09140d] hover:text-[#757933]/60 transition-colors duration-500"
         >
           maran
           <svg 
@@ -38,13 +38,13 @@ const Header = () => {
 
         <div className="flex gap-4 items-center max-sm:gap-2">
           <Link to="/search">
-            <HiOutlineMagnifyingGlass className="text-2xl max-sm:text-xl hover:text-[#9e9f96] transition-colors" />
+            <HiOutlineMagnifyingGlass className="text-2xl max-sm:text-xl hover:text-[#757933]/60 transition-colors" />
           </Link>
           <Link to="/login">
-            <HiOutlineUser className="text-2xl max-sm:text-xl  hover:text-[#9e9f96] transition-colors" />
+            <HiOutlineUser className="text-2xl max-sm:text-xl  hover:text-[#757933]/60 transition-colors" />
           </Link>
           <Link to="/cart" className="relative">
-            <HiOutlineShoppingBag className="text-2xl max-sm:text-xl  hover:text-[#9e9f96] transition-colors" />
+            <HiOutlineShoppingBag className="text-2xl max-sm:text-xl  hover:text-[#757933]/60 transition-colors" />
             {/* Cart count badge */}
             {cartItemCount > 0 && (
               <span className="absolute -top-2 -right-2 bg-[#09140d] text-white/80 text-xs w-5 h-5 rounded-full flex items-center justify-center font-semibold">

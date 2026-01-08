@@ -202,7 +202,7 @@ const ShopPageContent = ({ category, page } : { category: string; page: number; 
       
       {/* For Sale Section */}
       <section id="for-sale-section" className="mb-16 scroll-mt-24 border-b-2 border-dashed  border-[#9e9f96]">
-        <h2 className="text-xl  mb-6 text-center">for sale</h2>
+        <h2 className="text-xl  text-center">for sale</h2>
         <ProductGridWrapper 
           sortCriteria={sortCriteria} 
           category={category} 
@@ -216,7 +216,7 @@ const ShopPageContent = ({ category, page } : { category: string; page: number; 
 
       {/* Sold Section */}
       <section id="sold-section" className="mb-16 scroll-mt-24 border-b-2 border-dashed  border-[#9e9f96]">
-        <h2 className="text-xl mb-6 text-center ">s<svg 
+        <h2 className="text-xl text-center ">s<svg 
   className="inline-block w-[0.8em] h-[0.8em] mx-1 fill-current align-middle -translate-x-[0.03em] -translate-y-[0.1em]" 
   viewBox="0 0 600 579"
   xmlns="http://www.w3.org/2000/svg"
@@ -236,7 +236,7 @@ const ShopPageContent = ({ category, page } : { category: string; page: number; 
 
       {/* Not For Sale Section */}
       <section id="not-for-sale-section" className="mb-16 scroll-mt-24">
-        <h2 className="text-xl  mb-6 text-center">gallery</h2>
+        <h2 className="text-xl text-center">gallery</h2>
         <ProductGridWrapper 
           sortCriteria={sortCriteria} 
           category={category} 

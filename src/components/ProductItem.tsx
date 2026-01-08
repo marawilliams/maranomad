@@ -15,7 +15,7 @@ const ProductItem = ({
   category: string;
   price: number;
   stock: number;
-  status: "for-sale" | "not-for-sale" | "sold";
+  status: "for-sale" | "not-for-sale" | "sold" | "reserved"; // new
 }) => {
   // Determine price display
   const priceDisplay =
@@ -23,6 +23,8 @@ const ProductItem = ({
       ? `$${price}`
       : status === "sold"
       ? "sold"
+      : status === "reserved"
+      ? `$${price}`
       : "not for sale";
 
   return (
@@ -48,13 +50,6 @@ const ProductItem = ({
           />
         )}
 
-        {/* Optional overlay for not-for-sale */}
-        {/*{status === "not-for-sale" && (
-          <div className="absolute inset-0 bg-black/20 flex items-center justify-center text-[#d7d7d7]  text-xl">
-            not for sale
-          </div>
-        )}*/}
-
         
       </Link>
 
@@ -65,7 +60,7 @@ const ProductItem = ({
         <h2>{title}</h2>
       </Link>
 
-      <p className="font-eskool text-[#9e9f96] text-md text-center max-md:text-md">
+      <p className="font-jetbrains text-[#9e9f96] text-md text-center max-md:text-md mb-16">
         {priceDisplay}
       </p>
     </div>
