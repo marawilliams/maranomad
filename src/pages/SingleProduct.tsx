@@ -142,14 +142,14 @@ const SingleProduct = () => {
         </div>
 
         {/* Details */}
-        <div className="w-full flex flex-col gap-5 mt-9">
+        <div className="font-eskool w-full flex flex-col gap-5 mt-9">
           <h1 className="font-nightly font-light tracking-[2px] text-5xl lowercase">
             {singleProduct.title}
           </h1>
           <p className="text-base text-secondaryBrown lowercase">
             {formatCategoryName(singleProduct.category)}
           </p>
-          <p className="text-base font-bold lowercase">
+          <p style={{ fontFamily: "'JetBrains Mono', monospace" }} className="text-base font-bold lowercase">
             {singleProduct.status === "for-sale" && `$${singleProduct.price}`}
             {singleProduct.status === "reserved" && `$${singleProduct.price}`}
             {singleProduct.status === "sold" && "Sold"}

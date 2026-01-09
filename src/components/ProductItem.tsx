@@ -60,7 +60,7 @@ const ProductItem = ({
         <h2>{title}</h2>
       </Link>
 
-      <p className="font-jetbrains text-[#9e9f96] text-md text-center max-md:text-md mb-16">
+      <p style={{ fontFamily: "'JetBrains Mono', monospace" }} className="font-jetbrains text-[#9e9f96] text-md text-center max-md:text-md mb-16">
         {priceDisplay}
       </p>
     </div>

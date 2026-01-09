@@ -12,7 +12,7 @@ const Admin = () => {
   const [loadingProducts, setLoadingProducts] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [formData, setFormData] = useState({
-    title: '', price: '', description: '', category: '', images: [] as string[], stock: '', size: '', brand: '', status: 'for-sale' as 'for-sale' | 'sold' | 'not-for-sale'
+    title: '', price: '', description: '', category: '', images: [] as string[], stock: '', size: '', brand: '', status: 'for-sale' as 'for-sale' | 'sold' | 'not-for-sale' | 'reserved'
   });
   const [uploadingImages, setUploadingImages] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -165,7 +165,7 @@ const Admin = () => {
   if (!isAdmin) return <div>Access Denied</div>;
 
   return (
-    <div className="font-eskool max-w-screen-2xl mx-auto px-5 py-8">
+    <div style={{ fontFamily: "'JetBrains Mono', monospace" }} className=" max-w-screen-2xl mx-auto px-5 py-8">
       <h1 className="text-3xl font-bold mb-8">admin panel</h1>
       <Link to="/admin/orders" className=" bg-[#6a6c27] text-white/90 px-3 py-2 rounded hover:bg-[#6a6c27]/60 text-sm"  >
           manage orders
@@ -255,6 +255,7 @@ const Admin = () => {
                 <option value="for-sale">For Sale</option>
                 <option value="sold">Sold</option>
                 <option value="not-for-sale">Not For Sale</option>
+                <option value="reserved">Reserved</option>
               </select>
             </div>
             <div>

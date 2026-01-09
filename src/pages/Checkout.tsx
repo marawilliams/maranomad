@@ -436,7 +436,7 @@ useEffect(() => {
               Are you sure you want to leave? Your reservation will be released
               and these items will become available to other shoppers.
             </p>
-            <p className="font-jetbrains mb-6 text-sm text-gray-600">
+            <p style={{ fontFamily: "'JetBrains Mono', monospace" }} className="font-jetbrains mb-6 text-sm text-gray-600">
               ⏱ You have {formatTime(timeRemaining)} remaining
             </p>
             <div className="flex gap-3">
@@ -484,7 +484,7 @@ useEffect(() => {
                   style={{ width: `${percentRemaining}%` }}
                 />
               </div>
-              <p className={`font-jetbrains text-md text-center font-bold ${colors.text} min-w-[80px]`}>
+              <p style={{ fontFamily: "'JetBrains Mono', monospace" }} className={`font-jetbrains text-md text-center font-bold ${colors.text} min-w-[80px]`}>
                 {timeRemaining > 0 ? formatTime(timeRemaining) : "0:00"}
               </p>
             </div>
@@ -493,7 +493,7 @@ useEffect(() => {
         </div>
 
 
-        <div className="text-[#454715] font-jetbrains bg-white/70 rounded-lg shadow p-6">
+        <div style={{ fontFamily: "'JetBrains Mono', monospace" }} className="text-[#454715] font-jetbrains bg-white/70 rounded-lg shadow p-6">
           {/* Order Summary */}
           <h2 className="text-xl font-semibold mb-4">order summary</h2>
 
@@ -521,14 +521,16 @@ useEffect(() => {
                     Qty: {item.quantity || 1}
                   </p>
                 </div>
-                <p className="font-jetbrains text-[#13341E]/50">
+                <p 
+                  style={{ fontFamily: "'JetBrains Mono', monospace" }} 
+                  className="text-[#13341E]/50">
                   ${(item.price * (item.quantity || 1)).toFixed(2)}
                 </p>
               </div>
             ))}
           </div>
 
-          <div className="space-y-2 mb-6">
+          <div style={{ fontFamily: "'JetBrains Mono', monospace" }} className="space-y-2 mb-6">
             <div className="flex justify-between">
               <span>Subtotal:</span>
               <span>${subtotal.toFixed(2)}</span>
@@ -543,7 +545,7 @@ useEffect(() => {
             </div>
             <div className="flex text-[#13341E]/40 justify-between text-lg pt-2 border-t">
               <span>Total:</span>
-              <span className="font-jetbrains">${total.toFixed(2)}</span>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace" }} className="font-jetbrains">${total.toFixed(2)}</span>
             </div>
           </div>
 
@@ -562,6 +564,7 @@ useEffect(() => {
             <button
               onClick={handleCheckout}
               disabled={loading}
+              style={{ fontFamily: "'JetBrains Mono', monospace" }}
               className="w-full bg-[#635bff] text-white py-4 rounded-lg hover:bg-[#0a2540]/90 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-300"
             >
               {loading ? "Processing..." : `Pay $${total.toFixed(2)}`}

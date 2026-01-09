@@ -307,7 +307,7 @@ useEffect(() => {
               )}
             </section>
 
-            <section className="mb-6 bg-white/40 p-4 border rounded">
+            <section style={{ fontFamily: "'JetBrains Mono', monospace" }} className="mb-6 bg-white/40 p-4 border rounded">
               <h4 className="font-semibold mb-2">Order History</h4>
               {loadingOrders ? (
                 <div>Loading orders…</div>

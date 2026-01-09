@@ -63,7 +63,7 @@ const Register = () => {
           toast.error("Password should be at least 6 characters");
           break;
         default:
-          toast.error(error.message || "Registration failed");
+          toast.error("Registration failed");
       }
     }
   };

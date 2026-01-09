@@ -136,7 +136,7 @@ const AdminOrders = () => {
   if (!isAdmin) return <div>Access Denied</div>;
 
   return (
-    <div className="font-eskool max-w-screen-2xl mx-auto px-5 py-8">
+    <div style={{ fontFamily: "'JetBrains Mono', monospace" }} className=" max-w-screen-2xl mx-auto px-5 py-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Orders Management</h1>
         <button 

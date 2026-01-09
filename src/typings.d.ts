@@ -7,7 +7,7 @@ interface Product {
   stock: number;
 
   images: string[];            // unlimited images
-  status: "for-sale" | "sold" | "not-for-sale" | "reserved";
+  status: "for-sale" | "not-for-sale" | "sold" | "reserved";
   size: string;
   brand: string;
   createdAt?: string;
@@ -20,7 +20,7 @@ interface ProductInCart extends Product {
   color?: string;
   stock: number;
   _id?: string;      // optional, optional because MongoDB provides it
-  status?: "for-sale" | "not-for-sale" | "sold"; // optional, taken from Product
+  status?: "for-sale" | "not-for-sale" | "sold" | "reserved"; // optional, taken from Product
   images: string[];
 }
 

@@ -68,7 +68,6 @@ const Cart = () => {
       });
 
       toast.dismiss("reserving");
-      toast.success("Items reserved for 1 hour!");
 
       sessionStorage.setItem("checkout_expiresAt", data.expiresAt);
 
@@ -107,7 +106,7 @@ const Cart = () => {
         // Recheck availability
         checkAvailability();
       } else {
-        toast.error(err.response?.data?.error || "Failed to reserve items");
+        toast.error("Failed to reserve items");
       }
     } finally {
       setReserving(false);
@@ -169,7 +168,7 @@ const Cart = () => {
                           </button>
                         </div>
 
-                        <p className="font-jetbrains text-sm">${product.price.toFixed(2)}</p>
+                        <p style={{ fontFamily: "'JetBrains Mono', monospace" }} className="font-jetbrains text-sm">${product.price.toFixed(2)}</p>
 
                         <p className="mt-2 flex items-center text-sm">
                           {isUnavailable ? (
@@ -192,7 +191,7 @@ const Cart = () => {
             </ul>
           </section>
 
-          <section className="font-jetbrains lg:col-span-5 bg-gray-50/40 p-6 rounded-lg mt-10 lg:mt-0">
+          <section style={{ fontFamily: "'JetBrains Mono', monospace" }} className="font-jetbrains lg:col-span-5 bg-gray-50/40 p-6 rounded-lg mt-10 lg:mt-0">
             <h2 className="text-lg font-medium">Order Summary</h2>
 
             <dl className="mt-6 space-y-4">
