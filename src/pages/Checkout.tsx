@@ -193,56 +193,7 @@ useEffect(() => {
     }
   );
 
-  // // Handle browser refresh, back button, close tab
-  // useEffect(() => {
-  //   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-  //     // ✅ RELEASE ITEMS on tab close/refresh (unless going to Stripe)
-  //     if (!redirectingToStripe.current && productsInCart.length > 0 && auth.currentUser) {
-  //       console.log("🧹 Tab closing/refreshing, releasing items via beacon");
-        
-  //       // Use sendBeacon - most reliable for page unload
-  //       releaseItems("BeforeUnload");
-        
-  //       sessionStorage.removeItem('checkout_expiresAt');
-  //     }
-      
-  //     // Show warning dialog if not going to Stripe
-  //     if (!shouldBlockNavigation.current || redirectingToStripe.current) {
-  //       return;
-  //     }
-  //     e.preventDefault();
-  //     e.returnValue = "";
-  //     return "";
-  //   };
-
-  //   beforeUnloadHandler.current = handleBeforeUnload;
-  //   window.addEventListener("beforeunload", handleBeforeUnload);
-
-  //   // ✅ CLEANUP ON UNMOUNT - Release items when navigating away (not closing tab)
-  //   return () => {
-  //     window.removeEventListener("beforeunload", handleBeforeUnload);
-      
-  //     // This handles navigation to other pages (not tab close)
-  //     if (!redirectingToStripe.current && productsInCart.length > 0 && auth.currentUser) {
-  //       console.log("🧹 Component unmounting (navigation), releasing items");
-        
-  //       const releaseData = JSON.stringify({
-  //         productIds: productIdsRef.current,
-  //         userId: auth.currentUser.uid
-  //       });
-        
-  //       // Use fetch with keepalive for navigation
-  //       fetch('http://localhost:5000/api/release-reservations', {
-  //         method: 'POST',
-  //         headers: { 'Content-Type': 'application/json' },
-  //         body: releaseData,
-  //         keepalive: true
-  //       }).catch(err => console.error('❌ Release failed:', err));
-        
-  //       sessionStorage.removeItem('checkout_expiresAt');
-  //     }
-  //   };
-  // }, []);
+  
 
   // ✅ FIXED: Check if we're returning from Stripe cancel
   useEffect(() => {
@@ -265,9 +216,6 @@ useEffect(() => {
         if (restoredDate > now) {
           console.log("✅ Timer still valid, keeping user on checkout");
           // Timer is already restored in useState initializer
-          toast("Complete your purchase before time expires.", {
-            icon: "⏰",
-          });
           
           // Re-enable protections
           redirectingToStripe.current = false;
@@ -426,7 +374,7 @@ useEffect(() => {
       }
       
       toast.error(
-        error.response?.data?.error || "Checkout failed. Please try again."
+        "Checkout failed. Please try again."
       );
       setLoading(false);
     }
