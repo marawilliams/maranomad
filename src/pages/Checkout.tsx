@@ -69,58 +69,94 @@ const Checkout = () => {
   const shipping = subtotal > 0 ? 5.0 : 0;
   const tax = subtotal / 5;
   const total = subtotal + shipping + tax;
+  // Add at the top of your useEffect for beforeunload:
+useEffect(() => {
+  // Store page load time for refresh detection
+  sessionStorage.setItem("checkoutPageLoadTime", Date.now().toString());
 
+  const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    if (!redirectingToStripe.current && productsInCart.length > 0 && auth.currentUser) {
+      const now = Date.now();
+      const loadTime = Number(sessionStorage.getItem("checkoutPageLoadTime")) || now;
+
+      if (now - loadTime > 2000) { // >2s => probably tab close
+        // Use navigator.sendBeacon for reliable release
+        const data = JSON.stringify({
+          productIds: productIdsRef.current,
+          userId: auth.currentUser.uid,
+        });
+        navigator.sendBeacon("/api/release-reservations", data);
+        reservationActive.current = false;
+        sessionStorage.removeItem("checkout_expiresAt");
+        console.log("🚀 Released items via sendBeacon on tab close");
+      } else {
+        console.log("⏱ Likely refresh, not releasing items");
+      }
+    }
+
+    // Optional: warning dialog
+    if (!shouldBlockNavigation.current || redirectingToStripe.current) return;
+    e.preventDefault();
+    e.returnValue = "";
+    return "";
+  };
+
+  beforeUnloadHandler.current = handleBeforeUnload;
+  window.addEventListener("beforeunload", handleBeforeUnload);
+
+  return () => {
+    window.removeEventListener("beforeunload", handleBeforeUnload);
+
+    // Keep your original unmount fetch (for navigation)
+    if (!redirectingToStripe.current && productsInCart.length > 0 && auth.currentUser) {
+      console.log("🧹 Component unmounting (navigation), releasing items");
+
+      const releaseData = JSON.stringify({
+        productIds: productIdsRef.current,
+        userId: auth.currentUser.uid,
+      });
+
+      fetch("/api/release-reservations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: releaseData,
+        keepalive: true,
+      }).catch((err) => console.error("❌ Release failed:", err));
+
+      sessionStorage.removeItem("checkout_expiresAt");
+    }
+  };
+}, []);
+
+  
   // ✅ Save expiresAt to sessionStorage whenever it changes
   useEffect(() => {
     if (expiresAt) {
       const isoString = expiresAt.toISOString();
       sessionStorage.setItem('checkout_expiresAt', isoString);
       console.log("💾 Saved timer to session:", isoString);
-      console.log("💾 All sessionStorage keys:", Object.keys(sessionStorage));
-      
-      // Immediately verify it was saved
-      const check = sessionStorage.getItem('checkout_expiresAt');
-      if (check !== isoString) {
-        console.error("❌ CRITICAL: Timer save verification failed!");
-        console.error("Expected:", isoString);
-        console.error("Got:", check);
-      } else {
-        console.log("✅ Timer save verified successfully");
-      }
-    } else {
-      console.warn("⚠️ expiresAt is null, not saving to sessionStorage");
     }
-  }, [expiresAt]);
-
-  // ✅ NEW: Monitor sessionStorage for unexpected clears
-  useEffect(() => {
-    const checkTimer = setInterval(() => {
-      if (expiresAt && !redirectingToStripe.current) {
-        const stored = sessionStorage.getItem('checkout_expiresAt');
-        if (!stored) {
-          console.error("🚨 ALERT: Timer was removed from sessionStorage!");
-          console.error("🚨 Current expiresAt state:", expiresAt);
-          console.error("🚨 All sessionStorage keys:", Object.keys(sessionStorage));
-          // Try to restore it
-          sessionStorage.setItem('checkout_expiresAt', expiresAt.toISOString());
-          console.log("🔧 Attempted to restore timer");
-        }
-      }
-    }, 2000); // Check every 2 seconds
-
-    return () => clearInterval(checkTimer);
   }, [expiresAt]);
 
   // ✅ NEW: Log when component mounts
   useEffect(() => {
     console.log("🏁 Checkout component mounted");
-    console.log("🏁 location.state:", location.state);
-    console.log("🏁 passedExpiresAt:", passedExpiresAt);
-    console.log("🏁 reservationMade:", reservationMade);
     console.log("🏁 Initial expiresAt state:", expiresAt);
-    console.log("🏁 All sessionStorage on mount:", Object.keys(sessionStorage));
-    console.log("🏁 checkout_expiresAt on mount:", sessionStorage.getItem('checkout_expiresAt'));
   }, []);
+
+  const releaseItemsBeacon = () => {
+  if (!reservationActive.current) return;
+
+  const data = JSON.stringify({
+    productIds: productIdsRef.current,
+    userId: auth.currentUser?.uid || "guest",
+  });
+
+  navigator.sendBeacon("/api/release-reservations", data);
+  reservationActive.current = false;
+  sessionStorage.removeItem("checkout_expiresAt");
+  console.log("🚀 Released items via sendBeacon");
+};
 
   // Release function
   const releaseItems = async (source: string) => {
@@ -157,101 +193,119 @@ const Checkout = () => {
     }
   );
 
-  // Handle browser refresh, back button, close tab
+  // // Handle browser refresh, back button, close tab
+  // useEffect(() => {
+  //   const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  //     // ✅ RELEASE ITEMS on tab close/refresh (unless going to Stripe)
+  //     if (!redirectingToStripe.current && productsInCart.length > 0 && auth.currentUser) {
+  //       console.log("🧹 Tab closing/refreshing, releasing items via beacon");
+        
+  //       // Use sendBeacon - most reliable for page unload
+  //       releaseItems("BeforeUnload");
+        
+  //       sessionStorage.removeItem('checkout_expiresAt');
+  //     }
+      
+  //     // Show warning dialog if not going to Stripe
+  //     if (!shouldBlockNavigation.current || redirectingToStripe.current) {
+  //       return;
+  //     }
+  //     e.preventDefault();
+  //     e.returnValue = "";
+  //     return "";
+  //   };
+
+  //   beforeUnloadHandler.current = handleBeforeUnload;
+  //   window.addEventListener("beforeunload", handleBeforeUnload);
+
+  //   // ✅ CLEANUP ON UNMOUNT - Release items when navigating away (not closing tab)
+  //   return () => {
+  //     window.removeEventListener("beforeunload", handleBeforeUnload);
+      
+  //     // This handles navigation to other pages (not tab close)
+  //     if (!redirectingToStripe.current && productsInCart.length > 0 && auth.currentUser) {
+  //       console.log("🧹 Component unmounting (navigation), releasing items");
+        
+  //       const releaseData = JSON.stringify({
+  //         productIds: productIdsRef.current,
+  //         userId: auth.currentUser.uid
+  //       });
+        
+  //       // Use fetch with keepalive for navigation
+  //       fetch('http://localhost:5000/api/release-reservations', {
+  //         method: 'POST',
+  //         headers: { 'Content-Type': 'application/json' },
+  //         body: releaseData,
+  //         keepalive: true
+  //       }).catch(err => console.error('❌ Release failed:', err));
+        
+  //       sessionStorage.removeItem('checkout_expiresAt');
+  //     }
+  //   };
+  // }, []);
+
+  // ✅ FIXED: Check if we're returning from Stripe cancel
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      if (!shouldBlockNavigation.current || redirectingToStripe.current) {
-        return;
-      }
-      e.preventDefault();
-      e.returnValue = "";
-      return "";
-    };
-
-    beforeUnloadHandler.current = handleBeforeUnload;
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, []);
-
-  // ✅ NEW: Check if we're returning from Stripe cancel
-  useEffect(() => {
-    console.log("🔍 Checking for Stripe return...");
-    console.log("🔍 All sessionStorage keys:", Object.keys(sessionStorage));
-    console.log("🔍 checkout_expiresAt value:", sessionStorage.getItem('checkout_expiresAt'));
-    
     const urlParams = new URLSearchParams(window.location.search);
     const fromStripeCancel = urlParams.get('from') === 'stripe_cancel';
-    
-    console.log("🔍 URL params:", window.location.search);
-    console.log("🔍 fromStripeCancel:", fromStripeCancel);
     
     if (fromStripeCancel) {
       console.log("🔙 Returned from Stripe cancel");
       
+      // Clear the URL parameter
+      window.history.replaceState({}, '', '/checkout');
+      
       // Check if we have a valid timer
       const savedTimer = sessionStorage.getItem('checkout_expiresAt');
-      console.log("🔍 savedTimer from sessionStorage:", savedTimer);
       
       if (savedTimer) {
         const restoredDate = new Date(savedTimer);
         const now = new Date();
-        console.log("🔍 restoredDate:", restoredDate);
-        console.log("🔍 now:", now);
-        console.log("🔍 isValid:", restoredDate > now);
         
         if (restoredDate > now) {
-          console.log("✅ Timer still valid, restoring:", savedTimer);
-          setExpiresAt(restoredDate);
+          console.log("✅ Timer still valid, keeping user on checkout");
+          // Timer is already restored in useState initializer
+          toast("Complete your purchase before time expires.", {
+            icon: "⏰",
+          });
           
-          // Calculate initial time remaining
-          const remaining = restoredDate.getTime() - Date.now();
-          setTimeRemaining(remaining);
-          setPercentRemaining((remaining / TOTAL_TIME) * 100);
+          // Re-enable protections
+          redirectingToStripe.current = false;
+          shouldBlockNavigation.current = true;
+          shouldRelease.current = true;
+          reservationActive.current = true;
+          
+          setTimerInitialized(true);
         } else {
-          console.log("⚠️ Timer expired while at Stripe");
-          toast.error("Your reservation expired. Please add items again.");
+          console.log("⏰ Timer expired while at Stripe");
+          toast.error("Your reservation expired. Please add items to cart again.");
           sessionStorage.removeItem('checkout_expiresAt');
+          
+          // Release items before redirecting
+          if (productsInCart.length > 0 && auth.currentUser) {
+            releaseItems("TimerExpired");
+          }
           navigate("/cart");
           return;
         }
       } else {
-        console.log("⚠️ No timer found after returning from Stripe");
-        console.log("⚠️ This means sessionStorage was cleared or timer wasn't saved");
-        toast.error("Session lost. Please try again.");
-        navigate("/cart");
+        // ✅ NO TIMER: Release items and redirect to cart
+        console.log("⚠️ No timer found, releasing items");
+        
+        if (productsInCart.length > 0 && auth.currentUser) {
+          releaseItems("NoTimer").then(() => {
+            toast.error("Session lost. Items have been released.");
+            navigate("/cart");
+          });
+        } else {
+          toast.error("Session lost. Please try again.");
+          navigate("/cart");
+        }
         return;
       }
-      
-      // Clear the URL parameter
-      window.history.replaceState({}, '', '/checkout');
-      
-      // Reset the redirecting flag
-      redirectingToStripe.current = false;
-      
-      // Re-enable all protections
-      shouldBlockNavigation.current = true;
-      shouldRelease.current = true;
-      reservationActive.current = true;
-      
-      // Re-add beforeunload handler
-      const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-        if (!shouldBlockNavigation.current || redirectingToStripe.current) {
-          return;
-        }
-        e.preventDefault();
-        e.returnValue = "";
-        return "";
-      };
-      beforeUnloadHandler.current = handleBeforeUnload;
-      window.addEventListener("beforeunload", handleBeforeUnload);
-      
-      setTimerInitialized(true);
     } else {
       // Normal load (not from Stripe)
-      console.log("✅ Normal checkout load (not from Stripe)");
+      console.log("✅ Normal checkout load");
       setTimerInitialized(true);
     }
   }, [navigate]);
@@ -269,8 +323,6 @@ const Checkout = () => {
       const now = Date.now();
       const expiresAtTime = expiresAt.getTime();
       const remaining = expiresAtTime - now;
-      
-      console.log("⏱ Timer tick - Remaining:", remaining, "ms");
 
       if (remaining <= 0) {
         console.log("⏰ Timer expired!");
