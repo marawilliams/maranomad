@@ -29,6 +29,7 @@ interface Order {
     quantity: number;
     price: number;
     size?: string;
+    image?: string;
   }[];
   data?: {
     firstName?: string;
@@ -357,6 +358,7 @@ useEffect(() => {
                           {order.products?.map((p, idx) => (
                             <li key={p.productId || idx}>
                               {p.title} {p.size && `— ${p.size}`} — qty {p.quantity} — ${p.price}
+                              <img src={p.image} alt={p.title} className="w-16 h-16 object-cover ml-2" />
                             </li>
                           ))}
                         </ul>

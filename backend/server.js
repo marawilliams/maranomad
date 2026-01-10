@@ -200,13 +200,24 @@ app.post(
           const order = new Order({
             userId: userId === "guest" ? null : userId,
             customerEmail: customerEmail,
-            products: items.map((item, i) => ({
+            products: items.map((item, i) => {
+              let imageUrl = "";
+
+              if(Array.isArray(item.images) && item.images.length > 0) {
+                const firstImage = item.images[0];
+                imageUrl = typeof firstImage === 'string' ? firstImage : (firstImage.url || "");
+              } else if (typeof item.image === "string"){
+                imageUrl = item.image;  
+              }
+              return {
               productId: productIds[i],
               title: item.title,
               quantity: item.quantity,
               price: item.price,
               size: item.size || "",
-            })),
+              image: imageUrl || ""
+              };
+            }),  
             subtotal: session.amount_total / 100,
             status: "paid",
             shippingAddress,
