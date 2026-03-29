@@ -7,6 +7,7 @@ const productSchema = new mongoose.Schema({
   brand: String,
   images: [String],
   category: String,
+  size: String,
   
   // ✅ Status field
   status: { 
