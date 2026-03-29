@@ -8,6 +8,7 @@ const productSchema = new mongoose.Schema({
   images: [String],
   category: String,
   size: String,
+  quantity: { type: Number, default: 1 },
   
   // ✅ Status field
   status: { 
