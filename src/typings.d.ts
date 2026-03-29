@@ -38,6 +38,9 @@ interface User {
 
 interface Order {
   _id: string;                // ✅ MongoDB uses _id, not id
+  id?: string;
+  orderDate?: string;
+  orderStatus?: string;
   userId?: string;            // ✅ Optional for guest users
   customerEmail: string;      // ✅ Added email field
   
