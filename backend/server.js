@@ -212,7 +212,7 @@ app.post(
               return {
               productId: productIds[i],
               title: item.title,
-              quantity: item.quantity,
+              stock: item.stock,
               price: item.price,
               size: item.size || "",
               image: imageUrl || ""
@@ -447,7 +447,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
             },
             unit_amount: Math.round(item.price * 100),
           },
-          quantity: item.quantity || 1,
+          stock: item.stock || 1,
         };
       }),
       mode: 'payment',
@@ -466,7 +466,7 @@ app.post('/api/create-checkout-session', async (req, res) => {
           id: item.id || item._id,
           title: item.title,
           price: item.price,
-          quantity: item.quantity,
+          stock: item.stock,
           size: item.size,
           brand: item.brand, // ✅ Added brand
         }))),

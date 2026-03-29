@@ -19,8 +19,7 @@ const SingleProduct = () => {
     const fetchProduct = async () => {
       setLoading(true);
       try {
-        const response = await fetch(`http://localhost:5000/api/products/${params.id}`);
-        if (!response.ok) throw new Error("Product not found");
+  const response = await fetch(`${import.meta.env.VITE_API_URL}/api/products/${params.id}`);        if (!response.ok) throw new Error("Product not found");
         const data = await response.json();
         setSingleProduct(data);
       } catch (err: any) {
