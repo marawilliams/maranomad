@@ -327,6 +327,12 @@ const userRoutes = require("./routes/userRoutes"); // or wherever your users rou
 // Mount the users router at /api/users
 app.use("/api/users", userRoutes);
 
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for videos
+});
 // ... rest of your server setup
 // ADD THIS ROUTE - Upload endpoint for images/videos
 app.post('/api/products/upload', upload.single('image'), async (req, res) => {
@@ -374,8 +380,7 @@ app.post('/api/products', async (req, res) => {
   }
 });
 
-const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
+
 
 // Configure Cloudinary (add to your .env file)
 cloudinary.config({
@@ -386,10 +391,6 @@ cloudinary.config({
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for videos
-});
 
 
 
