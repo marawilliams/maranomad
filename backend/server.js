@@ -328,36 +328,6 @@ const userRoutes = require("./routes/userRoutes"); // or wherever your users rou
 app.use("/api/users", userRoutes);
 
 // ... rest of your server setup
-
-
-// Product CRUD for admin
-app.post('/api/products', async (req, res) => {
-  try {
-    const product = new Product(req.body);
-    await product.save();
-    res.json(product);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-const multer = require('multer');
-const cloudinary = require('cloudinary').v2;
-
-// Configure Cloudinary (add to your .env file)
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// Configure multer for memory storage
-const storage = multer.memoryStorage();
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for videos
-});
-
 // ADD THIS ROUTE - Upload endpoint for images/videos
 app.post('/api/products/upload', upload.single('image'), async (req, res) => {
   try {
@@ -392,6 +362,36 @@ app.post('/api/products/upload', upload.single('image'), async (req, res) => {
     res.status(500).json({ error: 'Failed to upload file' });
   }
 });
+
+// Product CRUD for admin
+app.post('/api/products', async (req, res) => {
+  try {
+    const product = new Product(req.body);
+    await product.save();
+    res.json(product);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+const multer = require('multer');
+const cloudinary = require('cloudinary').v2;
+
+// Configure Cloudinary (add to your .env file)
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
+});
+
+// Configure multer for memory storage
+const storage = multer.memoryStorage();
+const upload = multer({ 
+  storage: storage,
+  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for videos
+});
+
+
 
 app.put('/api/products/:id', async (req, res) => {
   try {
