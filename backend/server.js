@@ -329,10 +329,19 @@ app.use("/api/users", userRoutes);
 
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
-const upload = multer({ 
-  storage: storage,
-  limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit for videos
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+const storage = multer.memoryStorage();
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 100 * 1024 * 1024 },
+});
+
 // ... rest of your server setup
 // ADD THIS ROUTE - Upload endpoint for images/videos
 app.post('/api/products/upload', upload.single('image'), async (req, res) => {
@@ -379,19 +388,6 @@ app.post('/api/products', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
-
-
-// Configure Cloudinary (add to your .env file)
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET
-});
-
-// Configure multer for memory storage
-const storage = multer.memoryStorage();
-
 
 
 app.put('/api/products/:id', async (req, res) => {
@@ -845,7 +841,6 @@ app.post('/api/reverse-reservation', async (req, res) => {
 // server.js
 
 // Ensure this middleware is at the TOP of your file
-app.use(express.json()); 
 
 app.post('/api/release-reservations', async (req, res) => {
   try {
