@@ -13,7 +13,7 @@ const productSchema = new mongoose.Schema({
   // ✅ Status field
   status: { 
     type: String, 
-    enum: ['available', 'for-sale', 'reserved', 'sold'], 
+    enum: ['available', 'for-sale', 'reserved', 'sold', 'not-for-sale'], 
     default: 'available' 
   },
   
